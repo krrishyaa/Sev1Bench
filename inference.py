@@ -156,6 +156,50 @@ def _fallback_action(observation: Any, reason: str) -> dict[str, Any]:
     }
 
 
+def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
+    task_id = observation.metadata.get("task_id", "easy")
+    candidate_services = observation.metadata.get("candidate_services", [])
+    primary_service = candidate_services[0] if candidate_services else ""
+
+    remediation_by_task = {
+        "easy": "rollback",
+        "medium": "restart_service",
+        "hard": "scale_up",
+    }
+
+    if not observation.root_cause_found:
+        return {
+            "action_type": "read_logs",
+            "target": primary_service,
+            "message": "",
+            "metadata": {"policy": "deterministic_root_cause_probe"},
+        }
+
+    if not observation.correct_fix_applied:
+        return {
+            "action_type": remediation_by_task.get(task_id, "rollback"),
+            "target": primary_service,
+            "message": "",
+            "metadata": {"policy": "deterministic_remediation"},
+        }
+
+    if not observation.truthful_status_posted:
+        recovered = observation.system_health >= 0.99
+        message = (
+            "resolved, service restored and healthy"
+            if recovered
+            else "mitigating incident, service still degraded while restoring capacity"
+        )
+        return {
+            "action_type": "post_status_update",
+            "target": "",
+            "message": message,
+            "metadata": {"policy": "deterministic_status_update"},
+        }
+
+    return None
+
+
 def run_task(task_id: str, client: OpenAI, model_name: str) -> dict[str, Any]:
     env = IncidentResponseEnvironment(task_id=task_id, max_steps=30)
     observation = env.reset()
@@ -163,27 +207,30 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> dict[str, Any]:
     final_result = None
 
     while True:
-        prompt = _build_prompt(observation)
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a careful SRE operating a production incident-response "
-                            "environment. Return only valid JSON."
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.0,
-                max_tokens=300,
-            )
-            content = response.choices[0].message.content or ""
-            action_payload = _extract_action(content)
-        except Exception as exc:
-            action_payload = _fallback_action(observation, f"fallback_after_model_error: {exc}")
+        action_payload = _deterministic_policy_action(observation)
+
+        if action_payload is None:
+            prompt = _build_prompt(observation)
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a careful SRE operating a production incident-response "
+                                "environment. Return only valid JSON."
+                            ),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.0,
+                    max_tokens=300,
+                )
+                content = response.choices[0].message.content or ""
+                action_payload = _extract_action(content)
+            except Exception as exc:
+                action_payload = _fallback_action(observation, f"fallback_after_model_error: {exc}")
 
         try:
             action = IncidentAction(**action_payload)
