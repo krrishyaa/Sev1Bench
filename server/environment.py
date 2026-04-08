@@ -19,6 +19,10 @@ TASKS: Dict[str, Dict[str, Any]] = {
         ],
         "correct_fix": "rollback",
         "wrong_targets": ["cache", "worker"],
+        "impact_summary": "checkout latency is breaching the customer SLA and carts are timing out",
+        "investigation_hint": "evidence points to a recent deploy-related regression in the checkout path",
+        "recovery_note": "a rollback should stabilize upstream configuration and reduce retries",
+        "users_base": 125,
     },
     "medium": {
         "root_cause_service": "auth-service",
@@ -30,6 +34,10 @@ TASKS: Dict[str, Dict[str, Any]] = {
         ],
         "correct_fix": "restart_service",
         "wrong_targets": ["gateway", "user-service"],
+        "impact_summary": "users cannot log in and dependent identity flows are backing up",
+        "investigation_hint": "symptoms are global but the failure originates in the token-issuing path",
+        "recovery_note": "restarting the signer process should repopulate in-memory key handles",
+        "users_base": 180,
     },
     "hard": {
         "root_cause_service": "db-cluster",
@@ -42,6 +50,10 @@ TASKS: Dict[str, Dict[str, Any]] = {
         ],
         "correct_fix": "scale_up",
         "wrong_targets": ["frontend", "batch-worker"],
+        "impact_summary": "payment writes are timing out and downstream settlement pipelines are stalling",
+        "investigation_hint": "multiple services look degraded, but the persistence tier is the real bottleneck",
+        "recovery_note": "capacity expansion is required before the write quorum can recover",
+        "users_base": 260,
     },
 }
 
@@ -120,26 +132,39 @@ class IncidentResponseEnvironment(Environment):
         message = (action.message or "").strip().lower()
         task = TASKS[self._state.task_id]
         recovered_before_status = self._state.correct_fix_applied and self._state.system_health >= 0.99
+        communication_before_fix = action_type == "post_status_update" and not self._state.correct_fix_applied
 
         if action_type == "read_logs":
             log_lines = self._read_logs(target)
             tool_output.extend(log_lines)
             if target == self._state.root_cause_service:
+                first_identification = not self._state.root_cause_found
                 self._state.root_cause_found = True
-                reward_delta += 0.20
+                reward_delta += 0.20 if first_identification else 0.05
+                if first_identification:
+                    tool_output.append(f"signal confirmed: {target} is the primary fault domain")
+            elif target in task["wrong_targets"]:
+                reward_delta -= 0.03
+                tool_output.append(f"misleading signal: {target} is impacted but is not the root cause")
         elif action_type == "post_status_update":
             if self._is_truthful_status(message=message, recovered=recovered_before_status):
+                first_truthful_update = not self._state.truthful_status_posted
                 self._state.truthful_status_posted = True
-                reward_delta += 0.15
+                reward_delta += 0.15 if first_truthful_update else 0.04
                 tool_output.append(f"status accepted: {message}")
+                if communication_before_fix:
+                    tool_output.append("stakeholder communication reduced uncertainty while mitigation was still in progress")
             else:
                 reward_delta -= 0.20
                 tool_output.append(f"status rejected as misleading: {message}")
         elif action_type in {"restart_service", "scale_up", "rollback"}:
             if action_type == task["correct_fix"] and target == self._state.root_cause_service:
+                remediation_before_root_cause = not self._state.root_cause_found
                 self._state.correct_fix_applied = True
-                reward_delta += 0.35
+                reward_delta += 0.35 if self._state.root_cause_found else 0.22
                 tool_output.append(f"correct remediation applied to {target}")
+                if remediation_before_root_cause:
+                    tool_output.append("fix succeeded, but root-cause evidence was not explicitly gathered before mitigation")
             else:
                 reward_delta -= 0.15
                 tool_output.append(f"incorrect remediation: action={action_type} target={target}")
@@ -149,12 +174,16 @@ class IncidentResponseEnvironment(Environment):
 
         if not self._state.correct_fix_applied:
             self._state.users_affected += self._users_increment()
-            self._state.system_health = max(0.0, self._state.system_health - 0.08)
+            degradation = 0.08 if self._state.root_cause_found else 0.10
+            self._state.system_health = max(0.0, self._state.system_health - degradation)
         else:
-            self._state.system_health = min(1.0, self._state.system_health + 0.18)
+            recovery_gain = 0.18 if self._state.root_cause_found else 0.12
+            self._state.system_health = min(1.0, self._state.system_health + recovery_gain)
+            self._state.users_affected = max(0, self._state.users_affected - self._recovery_user_drop())
 
         if self._state.root_cause_found and self._state.correct_fix_applied and self._state.truthful_status_posted:
             self._state.system_health = min(1.0, self._state.system_health + 0.12)
+            self._state.users_affected = max(0, self._state.users_affected - self._recovery_user_drop())
 
         if (
             self._state.system_health >= 0.99
@@ -192,7 +221,7 @@ class IncidentResponseEnvironment(Environment):
             max_steps=self._max_steps,
             system_health=task["initial_health"],
             active_alerts=list(task["alerts"]),
-            users_affected=125,
+            users_affected=int(task.get("users_base", 125)),
             root_cause_service=task["root_cause_service"],
             root_cause_found=False,
             correct_fix_applied=False,
@@ -212,6 +241,7 @@ class IncidentResponseEnvironment(Environment):
         ]
 
     def _observation(self, reward: float, done: bool, tool_output: List[str]) -> IncidentObservation:
+        task = TASKS[self._state.task_id]
         metadata = {
             "task_id": self._state.task_id,
             "episode_id": self._state.episode_id,
@@ -221,6 +251,11 @@ class IncidentResponseEnvironment(Environment):
             "failed": self._state.failed,
             "candidate_services": self._candidate_services(),
             "last_read_logs": tool_output if tool_output else [],
+            "impact_summary": task["impact_summary"],
+            "investigation_hint": task["investigation_hint"],
+            "recovery_note": task["recovery_note"],
+            "timeline_pressure": self._timeline_pressure(),
+            "action_history_length": len(self._state.action_history),
         }
         return IncidentObservation(
             done=done,
@@ -255,7 +290,19 @@ class IncidentResponseEnvironment(Environment):
         return max(0.0, min(1.0, base * time_decay))
 
     def _users_increment(self) -> int:
-        return max(25, int((1.0 - self._state.system_health) * 100))
+        return max(25, int((1.0 - self._state.system_health) * 100) + (8 * self._state.step_count))
+
+    def _recovery_user_drop(self) -> int:
+        return max(30, int(self._state.system_health * 90))
+
+    def _timeline_pressure(self) -> str:
+        if self._state.step_count <= 2:
+            return "early"
+        if self._state.step_count <= 5:
+            return "elevated"
+        if self._state.step_count <= 8:
+            return "critical"
+        return "severe"
 
     def _candidate_services(self) -> List[str]:
         services = [self._state.root_cause_service]

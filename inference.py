@@ -160,6 +160,8 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
     task_id = observation.metadata.get("task_id", "easy")
     candidate_services = observation.metadata.get("candidate_services", [])
     primary_service = candidate_services[0] if candidate_services else ""
+    step_count = int(observation.metadata.get("step_count", observation.tick_count))
+    timeline_pressure = observation.metadata.get("timeline_pressure", "early")
 
     remediation_by_task = {
         "easy": "rollback",
@@ -172,7 +174,23 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
             "action_type": "read_logs",
             "target": primary_service,
             "message": "",
-            "metadata": {"policy": "deterministic_root_cause_probe"},
+            "metadata": {
+                "policy": "deterministic_root_cause_probe",
+                "timeline_pressure": timeline_pressure,
+                "step_count": step_count,
+            },
+        }
+
+    if not observation.truthful_status_posted and not observation.correct_fix_applied:
+        return {
+            "action_type": "post_status_update",
+            "target": "",
+            "message": "investigating root cause, service remains degraded while mitigation is prepared",
+            "metadata": {
+                "policy": "stakeholder_update_before_fix",
+                "timeline_pressure": timeline_pressure,
+                "impact_summary": observation.metadata.get("impact_summary", ""),
+            },
         }
 
     if not observation.correct_fix_applied:
@@ -180,7 +198,10 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
             "action_type": remediation_by_task.get(task_id, "rollback"),
             "target": primary_service,
             "message": "",
-            "metadata": {"policy": "deterministic_remediation"},
+            "metadata": {
+                "policy": "deterministic_remediation",
+                "recovery_note": observation.metadata.get("recovery_note", ""),
+            },
         }
 
     if not observation.truthful_status_posted:
@@ -194,7 +215,21 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
             "action_type": "post_status_update",
             "target": "",
             "message": message,
-            "metadata": {"policy": "deterministic_status_update"},
+            "metadata": {
+                "policy": "deterministic_status_update",
+                "timeline_pressure": timeline_pressure,
+            },
+        }
+
+    if observation.system_health < 0.99:
+        return {
+            "action_type": "post_status_update",
+            "target": "",
+            "message": "mitigating incident, service still degraded while restoring capacity",
+            "metadata": {
+                "policy": "continued_truthful_updates",
+                "timeline_pressure": timeline_pressure,
+            },
         }
 
     return None
