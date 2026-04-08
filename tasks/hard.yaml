@@ -1,0 +1,16 @@
+id: hard
+title: Database replication incident
+difficulty: hard
+description: Investigate payment-path degradation, identify db-cluster as the root cause, scale the cluster, communicate truthfully, and restore health.
+initial_conditions:
+  root_cause_service: db-cluster
+  initial_health: 0.28
+  correct_fix: scale_up
+success_criteria:
+  - root_cause_found == true
+  - correct_fix_applied == true
+  - truthful_status_posted == true
+  - resolved == true
+reward_range:
+  min: 0.0
+  max: 1.0

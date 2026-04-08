@@ -1,7 +1,16 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.sixth/
 *.pyc
 *.pyo
 *.pyd
 .Python
+*.log
+.env
+.env.*
+dist/
+build/
+*.egg-info/
+.DS_Store
+Thumbs.db

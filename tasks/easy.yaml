@@ -1,0 +1,16 @@
+id: easy
+title: API rollback incident
+difficulty: easy
+description: Investigate checkout degradation, identify api-service as the root cause, apply rollback, communicate truthfully, and restore health.
+initial_conditions:
+  root_cause_service: api-service
+  initial_health: 0.55
+  correct_fix: rollback
+success_criteria:
+  - root_cause_found == true
+  - correct_fix_applied == true
+  - truthful_status_posted == true
+  - resolved == true
+reward_range:
+  min: 0.0
+  max: 1.0

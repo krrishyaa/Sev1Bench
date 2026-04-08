@@ -1,0 +1,49 @@
+name: sev1bench
+description: OpenEnv incident-response environment with three deterministic tasks and typed action/observation contracts.
+entrypoint: server.app:app
+inference_entrypoint: inference.py
+runtime:
+  python_version: "3.11"
+  host: 0.0.0.0
+  port: 7860
+
+environment:
+  class_path: server.environment:IncidentResponseEnvironment
+  action_model: models:IncidentAction
+  observation_model: models:IncidentObservation
+  state_model: models:IncidentState
+
+variables:
+  required:
+    - API_BASE_URL
+    - MODEL_NAME
+    - HF_TOKEN
+  optional:
+    - TASK_ID
+    - SEED
+
+tasks:
+  - id: easy
+    description: Diagnose checkout degradation caused by api-service misconfiguration and recover via rollback.
+    grader: graders/easy_grader.py
+  - id: medium
+    description: Diagnose auth-service token validation outage and recover via restart_service.
+    grader: graders/medium_grader.py
+  - id: hard
+    description: Diagnose db-cluster replication incident and recover via scale_up.
+    grader: graders/hard_grader.py
+
+validation:
+  healthcheck_path: /
+  docs_path: /docs
+  reset_path: /reset
+  step_path: /step
+  state_path: /state
+  reward_range:
+    min: 0.0
+    max: 1.0
+
+deployment:
+  sdk: docker
+  dockerfile: Dockerfile
+  hardware: cpu-basic

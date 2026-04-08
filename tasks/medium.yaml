@@ -1,0 +1,16 @@
+id: medium
+title: Auth service recovery incident
+difficulty: medium
+description: Investigate authentication failures, identify auth-service as the root cause, restart the service, communicate truthfully, and restore health.
+initial_conditions:
+  root_cause_service: auth-service
+  initial_health: 0.40
+  correct_fix: restart_service
+success_criteria:
+  - root_cause_found == true
+  - correct_fix_applied == true
+  - truthful_status_posted == true
+  - resolved == true
+reward_range:
+  min: 0.0
+  max: 1.0

@@ -9,65 +9,34 @@ pinned: false
 
 # Sev1Bench
 
-Sev1Bench is a real OpenEnv incident-response environment built around the official `openenv.core.env_server` interfaces. It simulates a production outage where an agent must investigate the incident, choose the correct remediation, communicate honestly, and restore service health before the episode ends.
+Sev1Bench is an OpenEnv incident-response environment for evaluating whether an agent can investigate a live production-style outage, identify the true failing service, apply the correct remediation, communicate truthfully, and restore service health before the episode ends.
 
-This repository contains the final submission surface:
+The project is packaged for both local execution and deployment as a Docker-based Hugging Face Space.
 
-- a root `inference.py` entrypoint for hackathon validation
-- a FastAPI app in `server/app.py`
-- an environment implementation in `server/environment.py`
-- typed Pydantic models in `models.py`
-- packaging metadata in `pyproject.toml`
-- a container build via `Dockerfile`
+## Overview
 
-## What the environment does
-
-Each episode starts with degraded system health, active alerts, and growing user impact. The agent must:
+Each episode begins in a degraded state with active alerts, user impact, and deterministic evidence distributed across services. An agent must complete the full incident-response loop:
 
 1. inspect logs with `read_logs`
-2. identify the actual root cause service
-3. apply the correct remediation action to that exact service
+2. identify the real root-cause service
+3. apply the correct remediation to that exact service
 4. post a truthful status update
-5. recover the system to healthy state
+5. restore the system to healthy state
 
 The environment tracks:
 
-- tick count
+- current tick count
 - system health
 - active alerts
 - users affected
-- whether the root cause has been found
-- whether the correct fix has been applied
-- whether a truthful status update has been posted
-- whether the incident is resolved or failed
+- root-cause discovery
+- correct remediation
+- truthful communication
+- episode resolution or failure
 
-## OpenEnv implementation details
+## Task set
 
-The environment class is `IncidentResponseEnvironment` in `server/environment.py`.
-
-It subclasses `Environment` from:
-
-```python
-openenv.core.env_server
-```
-
-The app in `server/app.py` imports and uses:
-
-```python
-from openenv.core.env_server import create_fastapi_app
-```
-
-and exposes:
-
-```python
-app = create_fastapi_app(env)
-```
-
-There is also a small fallback FastAPI app in the file, but the current code directly imports `create_fastapi_app` from the installed OpenEnv package and uses it to serve the environment.
-
-## Supported tasks
-
-The implementation defines exactly three task IDs.
+Sev1Bench defines three task IDs:
 
 ### `easy`
 - Root cause service: `api-service`
@@ -84,11 +53,11 @@ The implementation defines exactly three task IDs.
 - Initial health: `0.28`
 - Correct remediation: `scale_up`
 
-If an unknown task ID is provided to the environment, it falls back to `easy`.
+If an unknown task ID is provided, the environment falls back to `easy`.
 
 ## Supported actions
 
-The environment currently exposes these actions exactly:
+The environment exposes the following actions:
 
 - `read_logs`
 - `restart_service`
@@ -96,81 +65,85 @@ The environment currently exposes these actions exactly:
 - `rollback`
 - `post_status_update`
 
-## Truthful status update rules
+## Truthful status update behavior
 
-The environment checks status messages with `_is_truthful_status(...)`.
+Status updates are evaluated against the current recovery state.
 
-Before recovery, a status update must avoid claiming the system is healthy or resolved. Messages are treated as truthful if they include one of:
+Before recovery, a valid update must avoid falsely claiming the system is healthy or resolved, and should communicate that the team is still investigating, mitigating, or restoring service.
 
-- `investigating`
-- `mitigating`
-- `degraded`
-- `restoring`
+After recovery, a valid update should clearly communicate that service has been restored, the incident is resolved, or the system is healthy again.
 
-After recovery, a status update is treated as truthful if it includes one of:
+## Reward and completion
 
-- `resolved`
-- `restored`
-- `healthy`
+The environment uses shaped per-step rewards for productive investigation, correct remediation, and truthful communication, along with penalties for misleading updates, unsupported actions, or incorrect remediations.
 
-## Reward and termination
+Episodes terminate when either:
 
-### Per-step rewards
+- the incident is fully resolved, or
+- the maximum step limit is reached before restoration
 
-Examples from the implementation:
+Final reward depends on:
 
-- `read_logs` on the real root cause: `+0.20`
-- truthful status update: `+0.15`
-- correct remediation: `+0.35`
-- misleading status update: `-0.20`
-- incorrect remediation: `-0.15`
-- unsupported action: `-0.10`
+- whether the root cause was found
+- whether the correct fix was applied
+- whether a truthful update was posted
+- whether the incident was actually resolved
+- time-decay based on the number of steps taken
 
-### Final reward
+## Repository layout
 
-When the episode ends, the environment computes a final reward based on:
+Submission-relevant files:
 
-- root cause found: `+0.25`
-- correct fix applied: `+0.40`
-- truthful status posted: `+0.15`
-- resolved: `+0.20`
+- `README.md`
+- `inference.py`
+- `models.py`
+- `server/app.py`
+- `server/environment.py`
+- `requirements.txt`
+- `pyproject.toml`
+- `Dockerfile`
 
-That total is multiplied by time decay:
+Key implementation points:
 
-- `1.0 - (0.03 * step_count)`
-- floored at `0.35`
+- `server/environment.py` defines `IncidentResponseEnvironment`
+- `server/app.py` exposes the FastAPI/OpenEnv app
+- `models.py` defines the typed action, observation, and state models
+- `inference.py` is the root evaluation entrypoint
 
-### Episode termination
+## OpenEnv app contract
 
-An episode ends when either:
+The environment class is `IncidentResponseEnvironment` in `server/environment.py`.
 
-- the incident is resolved, or
-- `max_steps` is reached and the incident is not resolved
+The application in `server/app.py` uses the official OpenEnv server interface via:
 
-`inference.py` currently creates the environment with:
+```python
+from openenv.core.env_server import create_fastapi_app
+```
 
-- `task_id=<TASK_ID>`
-- `max_steps=30`
+and serves the environment through a FastAPI app. A minimal fallback app is also present for compatibility, while the canonical evaluation surface remains the OpenEnv API.
 
 ## Inference entrypoint
 
-The root `inference.py` is the hackathon-facing inference script.
+The root `inference.py` file is the evaluation-facing entrypoint.
 
-It uses:
+It:
 
-- `openai.OpenAI`
-- `API_BASE_URL`
-- `MODEL_NAME`
-- `HF_TOKEN`
+- uses the `openai` Python client
+- reads `API_BASE_URL`
+- reads `MODEL_NAME`
+- requires `HF_TOKEN`
+- supports task selection with `TASK_ID`
+- prints structured execution markers:
+  - `[START]`
+  - `[STEP]`
+  - `[END]`
 
-It runs the environment locally in-process by importing `IncidentResponseEnvironment` directly, then asks a model to choose one JSON action at a time.
+### Environment variables
 
-### Inference environment variables
-
-`inference.py` reads these environment variables:
+`inference.py` reads these variables:
 
 - `HF_TOKEN`  
-  Required. If missing, the script exits with an error summary.
+  Required. The script exits with an error summary if it is missing.
 
 - `API_BASE_URL`  
   Optional. Default:
@@ -188,15 +161,7 @@ It runs the environment locally in-process by importing `IncidentResponseEnviron
   Optional. Default:
   `42`
 
-## Inference output format
-
-`inference.py` always prints structured markers to stdout:
-
-- `[START]`
-- one or more `[STEP]`
-- `[END]`
-
-## Local setup
+## Local run
 
 ### 1. Install dependencies
 
@@ -204,7 +169,7 @@ It runs the environment locally in-process by importing `IncidentResponseEnviron
 pip install -r requirements.txt
 ```
 
-### 2. Run the environment server locally
+### 2. Run the environment server
 
 ```bash
 uvicorn server.app:app --host 0.0.0.0 --port 7860
@@ -226,9 +191,74 @@ Windows `cmd.exe`:
 set HF_TOKEN=your_token && set TASK_ID=medium && python inference.py
 ```
 
-## Dependency summary
+## Docker deployment
 
-This project depends on:
+The included `Dockerfile`:
+
+- uses `python:3.11-slim`
+- installs dependencies from `requirements.txt`
+- copies the root inference and model files plus the `server/` package
+- serves the FastAPI app on port `7860`
+
+Container startup command:
+
+```bash
+uvicorn server.app:app --host 0.0.0.0 --port 7860
+```
+
+## Hugging Face Space deployment
+
+Recommended Space configuration:
+
+- Space type: `Docker`
+- Hardware: `CPU basic`
+- Port: `7860`
+- Secret to add: `HF_TOKEN`
+
+Recommended deployment checklist:
+
+1. Create or open the Space `Krrishya/Sev1Bench`
+2. Set the Space SDK to `Docker`
+3. Push the final repository contents
+4. Add the secret `HF_TOKEN`
+5. Wait for the Space build to complete successfully
+6. Verify the landing page and `/docs`
+7. Run final inference verification
+
+## Verification
+
+After deployment, verify the submission with both browser-visible and programmatic checks:
+
+### Browser checks
+
+- the Space loads successfully
+- the landing page renders
+- `/docs` is available
+- the Space is serving on port `7860`
+
+### Evaluation checks
+
+Run:
+
+```bat
+set HF_TOKEN=your_token && python inference.py
+```
+
+Confirm the script emits:
+
+- `[START]`
+- one or more `[STEP]`
+- `[END]`
+
+Optional task-specific verification:
+
+```bat
+set HF_TOKEN=your_token && set TASK_ID=hard && python inference.py
+```
+
+## Dependencies
+
+Runtime dependencies:
 
 - `openenv-core>=0.2.3,<1.0.0`
 - `openai>=1.0.0,<3.0.0`
@@ -236,57 +266,22 @@ This project depends on:
 - `uvicorn>=0.30.0,<1.0.0`
 - `pydantic>=2.0.0,<3.0.0`
 
-## Final repository contents
+Python requirement:
 
-The intended final submission surface is:
+- `>=3.11`
 
-- `README.md`
-- `inference.py`
-- `models.py`
-- `server/`
-- `requirements.txt`
-- `pyproject.toml`
-- `Dockerfile`
+## Project links
 
-## GitHub repository
+- GitHub: `https://github.com/krrishyaa/Sev1Bench`
+- Hugging Face Space: `https://huggingface.co/spaces/Krrishya/Sev1Bench`
 
-Target GitHub repository:
+## Final submission checklist
 
-- `https://github.com/krrishyaa/Sev1Bench`
+Before submitting:
 
-Typical push sequence:
-
-```bash
-git init
-git add .
-git commit -m "Final OpenEnv Submission - Sev1Bench"
-git branch -M main
-git remote add origin https://github.com/krrishyaa/Sev1Bench.git
-git push -u origin main
-```
-
-## Hugging Face Space
-
-Target Hugging Face Space:
-
-- `https://huggingface.co/spaces/Krrishya/Sev1Bench`
-
-Recommended Space setup:
-
-- Space SDK: `Docker`
-- Hardware: `CPU basic`
-- Secret to add: `HF_TOKEN`
-
-## Final live verification
-
-After the Space is running, point inference at the deployed endpoint and verify `[START]`, `[STEP]`, and `[END]` are emitted.
-
-## Important accuracy notes
-
-This README intentionally stays aligned with the current codebase:
-
-- it documents exactly three task IDs: `easy`, `medium`, `hard`
-- it lists only the five implemented actions
-- it describes the actual reward logic currently in `server/environment.py`
-- it documents only the environment variables actually read by `inference.py`
-- it does not claim any extra tooling, datasets, benchmarks, or deployment state not present in code
+- verify GitHub contains only the final repository surface
+- verify the Hugging Face Space is built from the same final files
+- verify `HF_TOKEN` is configured in the Space secrets
+- verify the Space root page and `/docs` both load
+- verify `python inference.py` completes and emits `[START]`, `[STEP]`, and `[END]`
+- verify task IDs `easy`, `medium`, and `hard` all behave as expected
