@@ -33,5 +33,4 @@ def _fallback_app() -> FastAPI:
     return app
 
 
-env = IncidentResponseEnvironment()
-app = create_fastapi_app(env, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
+app = create_fastapi_app(IncidentResponseEnvironment, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
