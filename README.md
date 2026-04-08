@@ -1,3 +1,12 @@
+---
+title: Sev1Bench
+emoji: 🚨
+colorFrom: red
+colorTo: yellow
+sdk: docker
+pinned: false
+---
+
 # Sev1Bench
 
 Sev1Bench is a real OpenEnv incident-response environment built around the official `openenv.core.env_server` interfaces. It simulates a production outage where an agent must investigate the incident, choose the correct remediation, communicate honestly, and restore service health before the episode ends.
