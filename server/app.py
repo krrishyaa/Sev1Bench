@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from openenv.core.env_server import create_fastapi_app
 
+from models import IncidentAction, IncidentObservation
 from .environment import IncidentResponseEnvironment
 
 
@@ -22,8 +23,6 @@ def _fallback_app() -> FastAPI:
 
     @app.post("/step")
     def step(action: dict) -> dict:
-        from models import IncidentAction
-
         observation = env.step(IncidentAction(**action))
         return observation.model_dump()
 
@@ -35,4 +34,4 @@ def _fallback_app() -> FastAPI:
 
 
 env = IncidentResponseEnvironment()
-app = create_fastapi_app(env) if create_fastapi_app is not None else _fallback_app()
+app = create_fastapi_app(env, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
