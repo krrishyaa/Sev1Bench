@@ -299,6 +299,10 @@ def main() -> int:
     if not API_KEY:
         raise ValueError("HF_TOKEN must not be empty")
 
+    print("API_BASE_URL=", API_BASE_URL, file=sys.stderr, flush=True)
+    print("MODEL_NAME=", MODEL_NAME, file=sys.stderr, flush=True)
+    print("HF_TOKEN set=", API_KEY is not None, file=sys.stderr, flush=True)
+
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     success = False
