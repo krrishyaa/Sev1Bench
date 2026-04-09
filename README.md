@@ -9,11 +9,22 @@ pinned: false
 
 # Sev1Bench
 
-Sev1Bench is an OpenEnv incident-response benchmark where an agent investigates a live outage, finds the true failing service, applies the correct remediation, posts a truthful status update, and restores service health before the episode ends.
+Sev1Bench is an OpenEnv-based incident response benchmark.  
+An agent must investigate a degraded production-style environment, identify the true failing service, apply the correct remediation, communicate status truthfully, and restore service health before the episode ends.
 
-## Tasks
+## Overview
 
-Available task IDs:
+The benchmark is designed to evaluate whether an agent can complete a realistic incident-response workflow:
+
+1. inspect evidence
+2. identify the root cause
+3. apply the correct remediation
+4. post a truthful status update
+5. restore the system to a healthy state
+
+## Task IDs
+
+Supported task IDs:
 
 - `easy`
 - `medium`
@@ -23,7 +34,7 @@ If an unknown task ID is provided, the environment falls back to `easy`.
 
 ## Supported actions
 
-The environment exposes these actions:
+The environment supports the following actions:
 
 - `read_logs`
 - `restart_service`
@@ -31,9 +42,9 @@ The environment exposes these actions:
 - `rollback`
 - `post_status_update`
 
-## Project structure
+## Repository structure
 
-Important files:
+Main files:
 
 - `README.md`
 - `inference.py`
@@ -46,7 +57,7 @@ Important files:
 
 ## Environment variables
 
-`inference.py` uses:
+`inference.py` reads the following environment variables:
 
 - `HF_TOKEN`  
   Required.
@@ -63,7 +74,7 @@ Important files:
 - `SEED`  
   Optional. Default: `42`
 
-## Local run
+## Local usage
 
 Install dependencies:
 
@@ -71,13 +82,13 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Run the server:
+Run the app locally:
 
 ```bash
 uvicorn server.app:app --host 0.0.0.0 --port 7860
 ```
 
-Run inference in Windows `cmd.exe`:
+Run inference locally in Windows `cmd.exe`:
 
 ```bat
 set HF_TOKEN=your_token && python inference.py
@@ -89,25 +100,27 @@ Run a specific task:
 set HF_TOKEN=your_token && set TASK_ID=medium && python inference.py
 ```
 
-## Hugging Face Space setup
+## Hugging Face Space
 
-Recommended Space configuration:
+Recommended configuration:
 
-- Space type: `Docker`
-- Hardware: `CPU basic`
+- Space SDK: `Docker`
 - Port: `7860`
 
-Secrets / variables:
+Recommended secret:
 
-- Required secret: `HF_TOKEN`
-- Optional variable: `API_BASE_URL`
-- Optional variable: `MODEL_NAME`
+- `HF_TOKEN`
 
-You do not need to add `API_BASE_URL` or `MODEL_NAME` in Hugging Face if you want to use the defaults already defined in `inference.py`.
+Optional variables:
+
+- `API_BASE_URL`
+- `MODEL_NAME`
+
+If you are using the defaults in `inference.py`, you only need to set `HF_TOKEN`.
 
 ## Verification
 
-Expected inference output includes:
+The inference script should print:
 
 - `[START]`
 - one or more `[STEP]`
@@ -119,7 +132,7 @@ Example:
 set HF_TOKEN=your_token && python inference.py
 ```
 
-Project links:
+## Links
 
 - GitHub: `https://github.com/krrishyaa/Sev1Bench`
 - Hugging Face Space: `https://huggingface.co/spaces/Krrishya/Sev1Bench`
