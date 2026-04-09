@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 import uvicorn
 from fastapi import FastAPI
@@ -36,6 +37,10 @@ def _fallback_app() -> FastAPI:
 
     return app
 
+
+print("API_BASE_URL=", os.getenv("API_BASE_URL"), file=sys.stderr, flush=True)
+print("MODEL_NAME=", os.getenv("MODEL_NAME"), file=sys.stderr, flush=True)
+print("HF_TOKEN set=", os.getenv("HF_TOKEN") is not None, file=sys.stderr, flush=True)
 
 app = create_fastapi_app(IncidentResponseEnvironment, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
 
