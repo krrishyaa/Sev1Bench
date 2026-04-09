@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+"""Pydantic models defining the incident response environment contract."""
+
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 
 class IncidentAction(BaseModel):
+    """Action payload submitted by an agent to the environment."""
+
     action_type: str = Field(
         description="Action to execute. Supported actions: read_logs, restart_service, scale_up, rollback, post_status_update."
     )
@@ -24,6 +28,8 @@ class IncidentAction(BaseModel):
 
 
 class IncidentObservation(BaseModel):
+    """Observation returned by the environment after each action."""
+
     done: bool = Field(default=False, description="Whether the episode has terminated.")
     reward: float = Field(default=0.0, ge=0.0, le=1.0, description="Bounded reward in the range [0.0, 1.0].")
     metadata: Dict[str, Any] = Field(
@@ -45,6 +51,8 @@ class IncidentObservation(BaseModel):
 
 
 class IncidentState(BaseModel):
+    """Internal mutable state tracked across an incident episode."""
+
     episode_id: Optional[str] = None
     step_count: int = Field(default=0, ge=0)
     task_id: str = Field(default="easy")

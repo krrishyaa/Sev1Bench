@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Incident response environment implementation for the Sev1 benchmark."""
+
 import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
@@ -60,64 +62,69 @@ TASKS: Dict[str, Dict[str, Any]] = {
 LOG_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
     "easy": {
         "api-service": [
-            "2026-04-08T09:00:00Z level=ERROR service=api-service request_id=req-7f31c2 route=/checkout latency_ms=4821 msg=\"Config mismatch after deploy\"",
-            "2026-04-08T09:00:01Z level=ERROR service=api-service request_id=req-7f31c3 exception=ConfigError msg=\"PAYMENTS_BACKEND_URL points to invalid canary target\"",
-            "2026-04-08T09:00:02Z level=TRACE service=api-service trace_id=trc-a91b span=rollback-check stack=\"ConfigError: invalid upstream\\n  at load_runtime_config(app/config.py:184)\\n  at bootstrap(app/main.py:61)\"",
+            "2026-04-08T09:00:00Z level=ERROR service=api-service request_id=req-7f31c2 route=/checkout latency_ms=4821 msg="Config mismatch after deploy"",
+            "2026-04-08T09:00:01Z level=ERROR service=api-service request_id=req-7f31c3 exception=ConfigError msg="PAYMENTS_BACKEND_URL points to invalid canary target"",
+            "2026-04-08T09:00:02Z level=TRACE service=api-service trace_id=trc-a91b span=rollback-check stack="ConfigError: invalid upstream\\n  at load_runtime_config(app/config.py:184)\\n  at bootstrap(app/main.py:61)"",
         ],
         "cache": [
-            "2026-04-08T09:00:00Z level=WARN service=cache request_id=req-c8112 msg=\"Cache miss rate elevated from slow upstream responses\"",
-            "2026-04-08T09:00:02Z level=INFO service=cache trace_id=trc-c119 dependency=api-service msg=\"backend timeouts propagating to cache warm path\"",
+            "2026-04-08T09:00:00Z level=WARN service=cache request_id=req-c8112 msg="Cache miss rate elevated from slow upstream responses"",
+            "2026-04-08T09:00:02Z level=INFO service=cache trace_id=trc-c119 dependency=api-service msg="backend timeouts propagating to cache warm path"",
         ],
         "worker": [
-            "2026-04-08T09:00:01Z level=WARN service=worker request_id=req-w2011 queue=checkout-jobs msg=\"job retry count rising due to api-service 5xx responses\"",
-            "2026-04-08T09:00:03Z level=INFO service=worker trace_id=trc-w201 dependency=api-service msg=\"downstream saturation detected, worker itself healthy\"",
+            "2026-04-08T09:00:01Z level=WARN service=worker request_id=req-w2011 queue=checkout-jobs msg="job retry count rising due to api-service 5xx responses"",
+            "2026-04-08T09:00:03Z level=INFO service=worker trace_id=trc-w201 dependency=api-service msg="downstream saturation detected, worker itself healthy"",
         ],
     },
     "medium": {
         "auth-service": [
-            "2026-04-08T09:10:00Z level=ERROR service=auth-service request_id=req-a1102 route=/token msg=\"JWT signer initialization failed after hot reload\"",
-            "2026-04-08T09:10:01Z level=ERROR service=auth-service request_id=req-a1103 exception=SignerUnavailable msg=\"active signing key handle missing from process memory\"",
-            "2026-04-08T09:10:03Z level=TRACE service=auth-service trace_id=trc-a77 stack=\"SignerUnavailable: signer handle missing\\n  at signer.load(runtime/keys.py:57)\\n  at issue_token(auth/service.py:212)\"",
+            "2026-04-08T09:10:00Z level=ERROR service=auth-service request_id=req-a1102 route=/token msg="JWT signer initialization failed after hot reload"",
+            "2026-04-08T09:10:01Z level=ERROR service=auth-service request_id=req-a1103 exception=SignerUnavailable msg="active signing key handle missing from process memory"",
+            "2026-04-08T09:10:03Z level=TRACE service=auth-service trace_id=trc-a77 stack="SignerUnavailable: signer handle missing\\n  at signer.load(runtime/keys.py:57)\\n  at issue_token(auth/service.py:212)"",
         ],
         "gateway": [
-            "2026-04-08T09:10:00Z level=WARN service=gateway request_id=req-g2201 route=/login status=401 msg=\"upstream auth-service rejected session token\"",
-            "2026-04-08T09:10:02Z level=INFO service=gateway trace_id=trc-g220 dependency=auth-service msg=\"symptom observed at edge, root cause likely upstream auth\"",
+            "2026-04-08T09:10:00Z level=WARN service=gateway request_id=req-g2201 route=/login status=401 msg="upstream auth-service rejected session token"",
+            "2026-04-08T09:10:02Z level=INFO service=gateway trace_id=trc-g220 dependency=auth-service msg="symptom observed at edge, root cause likely upstream auth"",
         ],
         "user-service": [
-            "2026-04-08T09:10:01Z level=WARN service=user-service request_id=req-u0191 msg=\"retry storm from gateway due to failed identity lookups\"",
-            "2026-04-08T09:10:04Z level=INFO service=user-service trace_id=trc-u019 dependency=auth-service msg=\"local service healthy, waiting on auth restoration\"",
+            "2026-04-08T09:10:01Z level=WARN service=user-service request_id=req-u0191 msg="retry storm from gateway due to failed identity lookups"",
+            "2026-04-08T09:10:04Z level=INFO service=user-service trace_id=trc-u019 dependency=auth-service msg="local service healthy, waiting on auth restoration"",
         ],
     },
     "hard": {
         "db-cluster": [
-            "2026-04-08T09:20:00Z level=ERROR service=db-cluster request_id=req-d9911 shard=payments-primary msg=\"write quorum unavailable: replication lag exceeded 12.4s\"",
-            "2026-04-08T09:20:01Z level=ERROR service=db-cluster request_id=req-d9912 exception=ReplicationTimeout msg=\"commit path blocked on overloaded replicas\"",
-            "2026-04-08T09:20:03Z level=TRACE service=db-cluster trace_id=trc-d991 stack=\"ReplicationTimeout: quorum write blocked\\n  at commit(txn/replication.py:311)\\n  at persist(payment/store.py:88)\"",
+            "2026-04-08T09:20:00Z level=ERROR service=db-cluster request_id=req-d9911 shard=payments-primary msg="write quorum unavailable: replication lag exceeded 12.4s"",
+            "2026-04-08T09:20:01Z level=ERROR service=db-cluster request_id=req-d9912 exception=ReplicationTimeout msg="commit path blocked on overloaded replicas"",
+            "2026-04-08T09:20:03Z level=TRACE service=db-cluster trace_id=trc-d991 stack="ReplicationTimeout: quorum write blocked\\n  at commit(txn/replication.py:311)\\n  at persist(payment/store.py:88)"",
         ],
         "frontend": [
-            "2026-04-08T09:20:00Z level=WARN service=frontend request_id=req-f4402 page=/status msg=\"status widgets stale because payment-api health endpoint timed out\"",
-            "2026-04-08T09:20:02Z level=INFO service=frontend trace_id=trc-f440 dependency=db-cluster msg=\"frontend healthy, degraded by upstream persistence path\"",
+            "2026-04-08T09:20:00Z level=WARN service=frontend request_id=req-f4402 page=/status msg="status widgets stale because payment-api health endpoint timed out"",
+            "2026-04-08T09:20:02Z level=INFO service=frontend trace_id=trc-f440 dependency=db-cluster msg="frontend healthy, degraded by upstream persistence path"",
         ],
         "batch-worker": [
-            "2026-04-08T09:20:01Z level=WARN service=batch-worker request_id=req-b5509 queue=settlements msg=\"consumer lag rising due to slow db commit acknowledgements\"",
-            "2026-04-08T09:20:03Z level=INFO service=batch-worker trace_id=trc-b550 dependency=db-cluster msg=\"worker drain constrained by database replication lag\"",
+            "2026-04-08T09:20:01Z level=WARN service=batch-worker request_id=req-b5509 queue=settlements msg="consumer lag rising due to slow db commit acknowledgements"",
+            "2026-04-08T09:20:03Z level=INFO service=batch-worker trace_id=trc-b550 dependency=db-cluster msg="worker drain constrained by database replication lag"",
         ],
     },
 }
 
 
 class IncidentResponseEnvironment(Environment):
+    """OpenEnv-compatible incident response simulation environment."""
+
     def __init__(self, task_id: str = "easy", max_steps: int = 30) -> None:
+        """Initialize the environment with a default task and episode length."""
         self._default_task_id = task_id
         self._max_steps = max_steps
         self._state = IncidentState()
         self._reset_task(task_id)
 
     def reset(self) -> IncidentObservation:
+        """Reset the environment to the default task's initial state."""
         self._reset_task(self._default_task_id)
         return self._observation(reward=0.0, done=False, tool_output=["incident initialized"])
 
     def step(self, action: IncidentAction) -> IncidentObservation:
+        """Advance the simulation by applying a single agent action."""
         if self._state.resolved or self._state.failed:
             return self._observation(reward=self._final_reward(), done=True, tool_output=["episode already finished"])
 
@@ -207,9 +214,11 @@ class IncidentResponseEnvironment(Environment):
 
     @property
     def state(self) -> IncidentState:
+        """Return the current internal environment state."""
         return self._state
 
     def _reset_task(self, task_id: str) -> None:
+        """Reinitialize state for the selected task configuration."""
         if task_id not in TASKS:
             task_id = "easy"
 
@@ -232,6 +241,7 @@ class IncidentResponseEnvironment(Environment):
         )
 
     def _available_actions(self) -> List[str]:
+        """Return the list of action types exposed to the agent."""
         return [
             "read_logs",
             "restart_service",
@@ -241,6 +251,7 @@ class IncidentResponseEnvironment(Environment):
         ]
 
     def _observation(self, reward: float, done: bool, tool_output: List[str]) -> IncidentObservation:
+        """Build the structured observation returned after each environment transition."""
         task = TASKS[self._state.task_id]
         metadata = {
             "task_id": self._state.task_id,
@@ -273,9 +284,11 @@ class IncidentResponseEnvironment(Environment):
         )
 
     def _bounded_reward(self, reward: float) -> float:
+        """Clamp a reward value to the environment's supported range."""
         return max(0.0, min(1.0, reward))
 
     def _final_reward(self) -> float:
+        """Compute the terminal reward from outcomes and time-to-resolution."""
         base = 0.0
         if self._state.root_cause_found:
             base += 0.25
@@ -290,12 +303,15 @@ class IncidentResponseEnvironment(Environment):
         return max(0.0, min(1.0, base * time_decay))
 
     def _users_increment(self) -> int:
+        """Estimate incremental user impact while the incident remains unmitigated."""
         return max(25, int((1.0 - self._state.system_health) * 100) + (8 * self._state.step_count))
 
     def _recovery_user_drop(self) -> int:
+        """Estimate the reduction in impacted users during recovery."""
         return max(30, int(self._state.system_health * 90))
 
     def _timeline_pressure(self) -> str:
+        """Translate elapsed steps into a qualitative urgency label."""
         if self._state.step_count <= 2:
             return "early"
         if self._state.step_count <= 5:
@@ -305,11 +321,13 @@ class IncidentResponseEnvironment(Environment):
         return "severe"
 
     def _candidate_services(self) -> List[str]:
+        """Return the services that are plausible investigation targets for the task."""
         services = [self._state.root_cause_service]
         services.extend(TASKS[self._state.task_id]["wrong_targets"])
         return services
 
     def _read_logs(self, target: str) -> List[str]:
+        """Return deterministic log lines for a requested service target."""
         if not target:
             return ["no target specified for read_logs"]
 
@@ -320,10 +338,11 @@ class IncidentResponseEnvironment(Environment):
         base_time = datetime(2026, 4, 8, 9, 0, 0) + timedelta(minutes=self._state.step_count)
         timestamp = base_time.isoformat() + "Z"
         return [
-            f"{timestamp} level=INFO service={target} request_id=req-generic-{self._state.step_count:04d} msg=\"service nominal; no direct evidence of root cause\""
+            f"{timestamp} level=INFO service={target} request_id=req-generic-{self._state.step_count:04d} msg="service nominal; no direct evidence of root cause""
         ]
 
     def _is_truthful_status(self, message: str, recovered: bool) -> bool:
+        """Validate whether a status update is truthful for the current incident phase."""
         if not message:
             return False
 

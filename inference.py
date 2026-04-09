@@ -307,11 +307,11 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, 
 
 
 def main() -> int:
-    api_base_url = os.environ.get("API_BASE_URL", DEFAULT_API_BASE_URL).strip()
+    api_base_url = (os.environ.get("API_BASE_URL") or "").strip()
     api_key = (os.environ.get("HF_TOKEN") or os.environ.get("API_KEY") or "").strip()
-    model_name = os.environ.get("MODEL_NAME", DEFAULT_MODEL_NAME).strip()
-    task_id = os.environ.get("TASK_ID", "easy").strip() or "easy"
-    env_name = os.environ.get("BENCHMARK_NAME", "sev1bench").strip() or "sev1bench"
+    model_name = (os.environ.get("MODEL_NAME") or DEFAULT_MODEL_NAME).strip()
+    task_id = (os.environ.get("TASK_ID") or "easy").strip() or "easy"
+    env_name = (os.environ.get("BENCHMARK_NAME") or "sev1bench").strip() or "sev1bench"
 
     if not model_name:
         raise ValueError("MODEL_NAME must not be empty")
@@ -323,7 +323,10 @@ def main() -> int:
     _log_start(task_id=task_id, env_name=env_name, model_name=model_name)
 
     try:
-        client = OpenAI(base_url=api_base_url, api_key=api_key)
+        client = OpenAI(
+            base_url=api_base_url,
+            api_key=api_key,
+        )
         success, steps, score, rewards = run_task(
             task_id=task_id,
             client=client,
@@ -331,11 +334,11 @@ def main() -> int:
         )
         return_code = 0
     except Exception:
+        print(traceback.format_exc(limit=3), file=sys.stderr, flush=True)
         success = False
         steps = 0
         score = 0.0
         rewards = []
-        print(f"[DEBUG] {json.dumps(traceback.format_exc(limit=3))}", flush=True)
         return_code = 1
     finally:
         _log_end(success=success, steps=steps, score=score, rewards=rewards)
