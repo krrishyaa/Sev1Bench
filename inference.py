@@ -15,10 +15,10 @@ from server.environment import IncidentResponseEnvironment
 
 
 IMAGE_NAME = os.getenv("IMAGE_NAME")
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-API_BASE_URL = os.getenv("API_BASE_URL")
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
 TASK_NAME = os.getenv("TASK_ID", "easy")
 BENCHMARK = "sev1bench"
 
@@ -40,6 +40,32 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
+        flush=True,
+    )
+
+
+def log_runtime_config(task: str, model: str, api_base_url: str, hf_token_present: bool) -> None:
+    print(
+        "[CONFIG] "
+        f"task={task} "
+        f"model={model} "
+        f"api_base_url={api_base_url} "
+        f"hf_token_present={str(hf_token_present).lower()}",
+        flush=True,
+    )
+
+
+def log_llm_attempt(model: str) -> None:
+    print(f"[LLM] attempting chat.completions.create model={model}", flush=True)
+
+
+def log_llm_success(model: str) -> None:
+    print(f"[LLM] request completed model={model}", flush=True)
+
+
+def log_llm_failure(model: str, error_type: str, error_message: str) -> None:
+    print(
+        f"[LLM] request_failed model={model} error_type={error_type} error_message={error_message}",
         flush=True,
     )
 
@@ -205,21 +231,27 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
 
 def _query_llm_once(client: OpenAI, model_name: str, observation: Any) -> dict[str, Any]:
     prompt = _build_prompt(observation)
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a careful SRE operating a production incident-response "
-                    "environment. Return only valid JSON."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.0,
-        max_tokens=300,
-    )
+    log_llm_attempt(model_name)
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a careful SRE operating a production incident-response "
+                        "environment. Return only valid JSON."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+            max_tokens=300,
+        )
+        log_llm_success(model_name)
+    except Exception as exc:
+        log_llm_failure(model_name, exc.__class__.__name__, str(exc))
+        raise
     content = response.choices[0].message.content or ""
     return _extract_action(content)
 
@@ -294,16 +326,20 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, 
 def main() -> int:
     if not MODEL_NAME:
         raise ValueError("MODEL_NAME must not be empty")
-    if API_BASE_URL is None:
-        raise ValueError("API_BASE_URL environment variable is required")
     if not API_BASE_URL.strip():
         raise ValueError("API_BASE_URL must not be empty")
-    if API_KEY is None:
+    if HF_TOKEN is None:
         raise ValueError("HF_TOKEN environment variable is required")
-    if not API_KEY.strip():
+    if not HF_TOKEN.strip():
         raise ValueError("HF_TOKEN must not be empty")
 
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_runtime_config(
+        task=TASK_NAME,
+        model=MODEL_NAME,
+        api_base_url=API_BASE_URL,
+        hf_token_present=bool(HF_TOKEN and HF_TOKEN.strip()),
+    )
 
     success = False
     steps = 0
@@ -314,7 +350,7 @@ def main() -> int:
     try:
         client = OpenAI(
             base_url=API_BASE_URL,
-            api_key=API_KEY,
+            api_key=HF_TOKEN,
         )
         success, steps, score, rewards = run_task(
             task_id=TASK_NAME,
