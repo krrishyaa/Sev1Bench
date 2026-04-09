@@ -1,16 +1,4 @@
-"""
-Hackathon-required root inference entrypoint for the Incident Response OpenEnv submission.
-
-Requirements implemented:
-- File name is exactly `inference.py` at project root
-- Uses the OpenAI Python client
-- Reads API_BASE_URL with a default
-- Reads MODEL_NAME with a default
-- Requires HF_TOKEN and fails fast if missing
-- Emits structured stdout logs with [START], [STEP], [END]
-- Ensures [END] is printed even on exceptions
-- Formats booleans as lowercase and rewards to 2 decimals
-"""
+"""Inference entrypoint for Sev1Bench."""
 
 from __future__ import annotations
 
@@ -39,40 +27,46 @@ def _reward_str(value: float) -> str:
     return f"{reward:.2f}"
 
 
-def _log_start(task_id: str, model_name: str, api_base_url: str, seed: int) -> None:
-    print("[START]")
-    print(f"task={task_id}")
-    print(f"model={model_name}")
-    print(f"api_base_url={api_base_url}")
-    print(f"seed={seed}")
+def _score_str(value: float) -> str:
+    score = max(0.0, min(1.0, float(value)))
+    return f"{score:.3f}"
+
+
+def _log_start(task_id: str, env_name: str, model_name: str) -> None:
+    print(f"[START] task={task_id} env={env_name} model={model_name}")
     sys.stdout.flush()
 
 
 def _log_step(
     step_index: int,
-    observation: Any,
     action_payload: dict[str, Any],
     result: Any,
+    error: str | None = None,
 ) -> None:
-    print("[STEP]")
-    print(f"step={step_index}")
-    print(f"tick={observation.tick_count}")
-    print(f"action_type={action_payload['action_type']}")
-    print(f"target={action_payload.get('target') or ''}")
-    print(f"done={_bool_str(bool(result.done))}")
-    print(f"resolved={_bool_str(bool(result.metadata.get('resolved', False)))}")
-    print(f"reward={_reward_str(result.reward)}")
-    print(f"users_affected={result.users_affected}")
-    print(f"system_health={_reward_str(result.system_health)}")
-    tool_output = result.tool_output[0] if result.tool_output else ""
-    print(f"action_result={json.dumps(tool_output)}")
+    action_str = json.dumps(
+        {
+            "action_type": action_payload.get("action_type", ""),
+            "target": action_payload.get("target") or "",
+            "message": action_payload.get("message") or "",
+            "metadata": action_payload.get("metadata") or {},
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    error_value = error if error else "null"
+    print(
+        f"[STEP] step={step_index} action={action_str} reward={_reward_str(result.reward)} "
+        f"done={_bool_str(bool(result.done))} error={error_value}"
+    )
     sys.stdout.flush()
 
 
-def _log_end(summary: dict[str, Any]) -> None:
-    print("[END]")
-    for key, value in summary.items():
-        print(f"{key}={value}")
+def _log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
+    rewards_str = ",".join(_reward_str(reward) for reward in rewards)
+    print(
+        f"[END] success={_bool_str(success)} steps={steps} "
+        f"score={_score_str(score)} rewards={rewards_str}"
+    )
     sys.stdout.flush()
 
 
@@ -235,47 +229,69 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
     return None
 
 
-def run_task(task_id: str, client: OpenAI, model_name: str) -> dict[str, Any]:
+def _query_llm_once(client: OpenAI, model_name: str, observation: Any) -> dict[str, Any]:
+    prompt = _build_prompt(observation)
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a careful SRE operating a production incident-response "
+                    "environment. Return only valid JSON."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+        max_tokens=300,
+    )
+    content = response.choices[0].message.content or ""
+    return _extract_action(content)
+
+
+def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, float, list[float]]:
     env = IncidentResponseEnvironment(task_id=task_id, max_steps=30)
     observation = env.reset()
     step_index = 0
     final_result = None
+    rewards: list[float] = []
+
+    llm_call_attempted = False
 
     while True:
-        action_payload = _deterministic_policy_action(observation)
+        action_payload = None
+        action_error: str | None = None
+
+        if not llm_call_attempted:
+            llm_call_attempted = True
+            try:
+                action_payload = _query_llm_once(client, model_name, observation)
+            except Exception as exc:
+                action_error = f"fallback_after_model_error:{exc.__class__.__name__}"
+                action_payload = _fallback_action(observation, f"fallback_after_model_error: {exc}")
 
         if action_payload is None:
-            prompt = _build_prompt(observation)
+            action_payload = _deterministic_policy_action(observation)
+
+        if action_payload is None:
             try:
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a careful SRE operating a production incident-response "
-                                "environment. Return only valid JSON."
-                            ),
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.0,
-                    max_tokens=300,
-                )
-                content = response.choices[0].message.content or ""
-                action_payload = _extract_action(content)
+                action_payload = _query_llm_once(client, model_name, observation)
             except Exception as exc:
+                action_error = f"fallback_after_model_error:{exc.__class__.__name__}"
                 action_payload = _fallback_action(observation, f"fallback_after_model_error: {exc}")
 
         try:
             action = IncidentAction(**action_payload)
         except Exception as exc:
+            action_error = f"fallback_after_action_parse_error:{exc.__class__.__name__}"
             action_payload = _fallback_action(observation, f"fallback_after_action_parse_error: {exc}")
             action = IncidentAction(**action_payload)
 
         result = env.step(action)
         step_index += 1
-        _log_step(step_index, observation, action_payload, result)
+        rewards.append(float(result.reward))
+        _log_step(step_index, action_payload, result, error=action_error)
 
         final_result = result
         observation = result
@@ -285,63 +301,44 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> dict[str, Any]:
     if final_result is None:
         raise RuntimeError("Episode finished without producing a final result")
 
-    return {
-        "task": task_id,
-        "resolved": _bool_str(bool(final_result.metadata.get("resolved", False))),
-        "done": _bool_str(bool(final_result.done)),
-        "steps": str(step_index),
-        "final_reward": _reward_str(final_result.reward),
-        "system_health": _reward_str(final_result.system_health),
-        "root_cause_found": _bool_str(bool(final_result.root_cause_found)),
-        "correct_fix_applied": _bool_str(bool(final_result.correct_fix_applied)),
-        "truthful_status_posted": _bool_str(bool(final_result.truthful_status_posted)),
-    }
+    score = max(0.0, min(1.0, float(final_result.reward)))
+    success = bool(final_result.metadata.get("resolved", False))
+    return success, step_index, score, rewards
 
 
 def main() -> int:
     api_base_url = os.environ.get("API_BASE_URL", DEFAULT_API_BASE_URL).strip()
+    api_key = (os.environ.get("HF_TOKEN") or os.environ.get("API_KEY") or "").strip()
     model_name = os.environ.get("MODEL_NAME", DEFAULT_MODEL_NAME).strip()
-    hf_token = os.environ.get("HF_TOKEN")
     task_id = os.environ.get("TASK_ID", "easy").strip() or "easy"
-    seed = int(os.environ.get("SEED", "42"))
+    env_name = os.environ.get("BENCHMARK_NAME", "sev1bench").strip() or "sev1bench"
 
     if not model_name:
         raise ValueError("MODEL_NAME must not be empty")
+    if not api_base_url:
+        raise ValueError("API_BASE_URL must not be empty")
+    if not api_key:
+        raise ValueError("HF_TOKEN or API_KEY must not be empty")
 
-    summary: dict[str, Any]
-    _log_start(task_id=task_id, model_name=model_name, api_base_url=api_base_url, seed=seed)
+    _log_start(task_id=task_id, env_name=env_name, model_name=model_name)
 
     try:
-        if not hf_token:
-            raise ValueError("HF_TOKEN environment variable is required")
-
-        client = OpenAI(base_url=api_base_url, api_key=hf_token)
-        summary = run_task(
+        client = OpenAI(base_url=api_base_url, api_key=api_key)
+        success, steps, score, rewards = run_task(
             task_id=task_id,
             client=client,
             model_name=model_name,
         )
-        summary["status"] = "success"
         return_code = 0
-    except Exception as exc:
-        summary = {
-            "task": task_id,
-            "resolved": "false",
-            "done": "false",
-            "steps": "0",
-            "final_reward": _reward_str(0.0),
-            "system_health": _reward_str(0.0),
-            "root_cause_found": "false",
-            "correct_fix_applied": "false",
-            "truthful_status_posted": "false",
-            "status": "error",
-            "error_type": exc.__class__.__name__,
-            "error_message": json.dumps(str(exc)),
-            "traceback": json.dumps(traceback.format_exc(limit=3)),
-        }
+    except Exception:
+        success = False
+        steps = 0
+        score = 0.0
+        rewards = []
+        print(f"[DEBUG] {json.dumps(traceback.format_exc(limit=3))}", flush=True)
         return_code = 1
     finally:
-        _log_end(summary)
+        _log_end(success=success, steps=steps, score=score, rewards=rewards)
 
     return return_code
 
