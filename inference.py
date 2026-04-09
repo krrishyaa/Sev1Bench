@@ -17,7 +17,7 @@ from server.environment import IncidentResponseEnvironment
 IMAGE_NAME = os.getenv("IMAGE_NAME")
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
 TASK_NAME = os.getenv("TASK_ID", "easy")
 BENCHMARK = "sev1bench"
@@ -294,14 +294,14 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, 
 def main() -> int:
     if not MODEL_NAME:
         raise ValueError("MODEL_NAME must not be empty")
-    if not API_BASE_URL:
+    if API_BASE_URL is None:
+        raise ValueError("API_BASE_URL environment variable is required")
+    if not API_BASE_URL.strip():
         raise ValueError("API_BASE_URL must not be empty")
-    if not API_KEY:
+    if API_KEY is None:
+        raise ValueError("HF_TOKEN environment variable is required")
+    if not API_KEY.strip():
         raise ValueError("HF_TOKEN must not be empty")
-
-    print("API_BASE_URL=", API_BASE_URL, file=sys.stderr, flush=True)
-    print("MODEL_NAME=", MODEL_NAME, file=sys.stderr, flush=True)
-    print("HF_TOKEN set=", API_KEY is not None, file=sys.stderr, flush=True)
 
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
