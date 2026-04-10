@@ -24,14 +24,26 @@ variables:
 
 tasks:
   - id: easy
+    title: API service out-of-memory incident
+    difficulty: easy
     description: Diagnose checkout degradation caused by api-service misconfiguration and recover via rollback.
     grader: graders/easy_grader.py
+    grader_fn: grade
+    active: true
   - id: medium
+    title: Auth service degradation with noisy downstream failures
+    difficulty: medium
     description: Diagnose auth-service token validation outage and recover via restart_service.
     grader: graders/medium_grader.py
+    grader_fn: grade
+    active: true
   - id: hard
+    title: Database incident under stakeholder pressure
+    difficulty: hard
     description: Diagnose db-cluster replication incident and recover via scale_up.
     grader: graders/hard_grader.py
+    grader_fn: grade
+    active: true
 
 validation:
   healthcheck_path: /
