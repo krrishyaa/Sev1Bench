@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import io
+import json
 import os
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from openenv.core.env_server import create_fastapi_app
+from openai import OpenAI
 
 from models import IncidentAction, IncidentObservation
+from inference import resolve_runtime_config, run_task
 from .environment import IncidentResponseEnvironment
 
 
@@ -45,6 +50,56 @@ print("HF_TOKEN set=", os.getenv("HF_TOKEN") is not None, file=sys.stderr, flush
 app = create_fastapi_app(IncidentResponseEnvironment, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
 
 
+@app.get("/ui/test-run")
+def ui_test_run(task_id: str = "easy") -> JSONResponse:
+    selected_task = task_id if task_id in {"easy", "medium", "hard"} else "easy"
+
+    try:
+        api_base_url, model_name = resolve_runtime_config()
+        stdout_buffer = io.StringIO()
+        stderr_buffer = io.StringIO()
+
+        with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+            client = OpenAI(base_url=api_base_url, api_key=os.getenv("HF_TOKEN"))
+            success, steps, score, rewards = run_task(
+                task_id=selected_task,
+                client=client,
+                model_name=model_name,
+            )
+
+        stdout_text = stdout_buffer.getvalue()
+        stderr_text = stderr_buffer.getvalue()
+        llm_lines = [line for line in stdout_text.splitlines() if line.startswith("[LLM]")]
+        step_lines = [line for line in stdout_text.splitlines() if line.startswith("[STEP]")]
+
+        return JSONResponse(
+            {
+                "ok": True,
+                "task_id": selected_task,
+                "model_name": model_name,
+                "api_base_url": api_base_url,
+                "success": success,
+                "steps": steps,
+                "score": score,
+                "rewards": rewards,
+                "llm_log_lines": llm_lines,
+                "step_log_lines": step_lines,
+                "stdout": stdout_text,
+                "stderr": stderr_text,
+            }
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {
+                "ok": False,
+                "task_id": selected_task,
+                "error_type": exc.__class__.__name__,
+                "error": str(exc),
+            },
+            status_code=500,
+        )
+
+
 @app.get("/", response_class=HTMLResponse)
 def landing_page() -> str:
     return """
@@ -57,29 +112,26 @@ def landing_page() -> str:
         <style>
           :root {
             color-scheme: dark;
-            --bg: #06101c;
-            --bg-2: #0a1630;
-            --panel: rgba(10, 22, 42, 0.78);
-            --panel-strong: rgba(12, 28, 52, 0.92);
-            --panel-soft: rgba(255, 255, 255, 0.05);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #edf4ff;
-            --muted: #9fb2cf;
+            --bg: #040814;
+            --bg-2: #081221;
+            --panel: rgba(8, 18, 33, 0.82);
+            --panel-strong: rgba(10, 23, 42, 0.94);
+            --panel-soft: rgba(255, 255, 255, 0.045);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #eef5ff;
+            --muted: #9ab0cf;
             --accent: #ff7a18;
             --accent-2: #ffb703;
-            --cyan: #5eead4;
+            --cyan: #67e8f9;
+            --green: #4ade80;
             --blue: #60a5fa;
             --danger: #fb7185;
+            --warning: #fbbf24;
             --shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
           }
 
-          * {
-            box-sizing: border-box;
-          }
-
-          html {
-            scroll-behavior: smooth;
-          }
+          * { box-sizing: border-box; }
+          html { scroll-behavior: smooth; }
 
           body {
             margin: 0;
@@ -87,10 +139,10 @@ def landing_page() -> str:
             font-family: Inter, Segoe UI, Arial, sans-serif;
             color: var(--text);
             background:
-              radial-gradient(circle at 0% 0%, rgba(255, 122, 24, 0.2), transparent 24%),
-              radial-gradient(circle at 100% 10%, rgba(94, 234, 212, 0.13), transparent 20%),
-              radial-gradient(circle at 50% 100%, rgba(96, 165, 250, 0.12), transparent 26%),
-              linear-gradient(180deg, var(--bg) 0%, #040914 100%);
+              radial-gradient(circle at 0% 0%, rgba(255, 122, 24, 0.18), transparent 25%),
+              radial-gradient(circle at 100% 10%, rgba(103, 232, 249, 0.12), transparent 22%),
+              radial-gradient(circle at 50% 100%, rgba(96, 165, 250, 0.12), transparent 28%),
+              linear-gradient(180deg, var(--bg) 0%, #02050d 100%);
           }
 
           body::before {
@@ -99,17 +151,17 @@ def landing_page() -> str:
             inset: 0;
             pointer-events: none;
             background-image:
-              linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 36px 36px;
-            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.9));
-            opacity: 0.2;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.95));
+            opacity: 0.18;
           }
 
           .shell {
-            width: min(1200px, calc(100% - 32px));
+            width: min(1280px, calc(100% - 30px));
             margin: 0 auto;
-            padding: 28px 0 64px;
+            padding: 24px 0 60px;
             position: relative;
             z-index: 1;
           }
@@ -117,154 +169,128 @@ def landing_page() -> str:
           .hero {
             position: relative;
             overflow: hidden;
-            border-radius: 34px;
-            padding: 34px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.08);
             background:
-              radial-gradient(circle at 15% 18%, rgba(255, 183, 3, 0.17), transparent 18%),
-              radial-gradient(circle at 85% 16%, rgba(94, 234, 212, 0.13), transparent 18%),
+              radial-gradient(circle at 15% 18%, rgba(255, 183, 3, 0.16), transparent 18%),
+              radial-gradient(circle at 85% 16%, rgba(103, 232, 249, 0.10), transparent 18%),
               radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.12), transparent 26%),
-              linear-gradient(135deg, rgba(255, 122, 24, 0.12), rgba(10, 22, 42, 0.96) 35%, rgba(4, 9, 20, 0.98));
-            box-shadow:
-              var(--shadow),
-              inset 0 1px 0 rgba(255, 255, 255, 0.06);
+              linear-gradient(135deg, rgba(255, 122, 24, 0.10), rgba(10, 22, 42, 0.96) 35%, rgba(4, 9, 20, 0.98));
+            box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
           }
 
           .hero::after {
             content: "";
             position: absolute;
-            inset: auto -100px -100px auto;
-            width: 320px;
-            height: 320px;
+            inset: auto -80px -80px auto;
+            width: 260px;
+            height: 260px;
             border-radius: 50%;
             background: radial-gradient(circle, rgba(255, 122, 24, 0.18), transparent 65%);
-            filter: blur(10px);
+            filter: blur(8px);
+          }
+
+          .topbar, .hero-grid, .section, .callout-grid, .metrics-grid, .two-col {
+            display: grid;
+            gap: 18px;
           }
 
           .topbar {
-            display: flex;
-            justify-content: space-between;
+            grid-template-columns: 1fr auto;
             align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
+          }
+
+          .badge, .status-chip, .task-chip, .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-size: 13px;
           }
 
           .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 11px 16px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.09);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
             color: var(--muted);
-            font-size: 13px;
-            letter-spacing: 0.02em;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
           }
 
           .status-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            color: var(--text);
-            background: rgba(10, 26, 47, 0.8);
-            border: 1px solid rgba(94, 234, 212, 0.28);
-            font-size: 13px;
+            background: rgba(10, 26, 47, 0.82);
+            border: 1px solid rgba(103, 232, 249, 0.28);
           }
 
           .status-dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--cyan);
-            box-shadow: 0 0 16px rgba(94, 234, 212, 0.8);
+            background: var(--green);
+            box-shadow: 0 0 16px rgba(74, 222, 128, 0.75);
           }
 
           h1 {
-            margin: 22px 0 12px;
-            max-width: 760px;
-            font-size: clamp(42px, 8vw, 84px);
-            line-height: 0.92;
+            margin: 20px 0 12px;
+            max-width: 820px;
+            font-size: clamp(42px, 8vw, 82px);
+            line-height: 0.93;
             letter-spacing: -0.06em;
           }
 
           .lead {
             margin: 0;
-            max-width: 800px;
+            max-width: 820px;
             font-size: 18px;
-            line-height: 1.82;
+            line-height: 1.8;
             color: var(--muted);
           }
 
-          .lead strong {
-            color: var(--text);
-          }
+          .lead strong, .metric strong, .highlight strong, .mini-card strong, .task-chip strong { color: var(--text); }
 
-          .hero-highlight {
-            margin-top: 24px;
+          .hero-highlight, .metrics-grid, .actions {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 14px;
+            gap: 12px;
           }
 
-          .highlight {
+          .hero-highlight { margin-top: 22px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .hero-grid { margin-top: 24px; grid-template-columns: 1.2fr 0.8fr; }
+          .section, .callout-grid, .two-col { margin-top: 20px; grid-template-columns: 1fr 1fr; }
+          .metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .actions { margin-top: 18px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+          .highlight, .mini-card, .task-chip {
             padding: 16px 18px;
             border-radius: 18px;
             background: var(--panel-soft);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255,255,255,0.08);
           }
 
-          .highlight span {
+          .highlight span, .mini-card span, .eyebrow {
             display: block;
             margin-bottom: 8px;
             font-size: 12px;
-            letter-spacing: 0.08em;
             text-transform: uppercase;
+            letter-spacing: 0.08em;
             color: var(--muted);
           }
 
-          .highlight strong {
-            font-size: 16px;
-            color: var(--text);
+          .judge-banner, .card {
+            border: 1px solid var(--border);
+            border-radius: 24px;
           }
 
           .judge-banner {
             margin-top: 18px;
             padding: 16px 18px;
-            border-radius: 18px;
             background: linear-gradient(90deg, rgba(255, 122, 24, 0.12), rgba(96, 165, 250, 0.08));
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: var(--text);
             line-height: 1.7;
           }
 
-          .hero-grid {
-            display: grid;
-            grid-template-columns: 1.45fr 1fr;
-            gap: 22px;
-            margin-top: 26px;
-          }
-
-          .section {
-            margin-top: 22px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 22px;
-          }
-
           .card {
-            background: linear-gradient(180deg, rgba(10, 22, 42, 0.86), rgba(9, 20, 38, 0.76));
-            border: 1px solid var(--border);
-            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(10, 22, 42, 0.88), rgba(8, 18, 33, 0.78));
             padding: 22px;
             backdrop-filter: blur(14px);
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.04),
-              0 18px 40px rgba(0, 0, 0, 0.18);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px rgba(0,0,0,0.18);
           }
 
           .card h2 {
@@ -273,116 +299,147 @@ def landing_page() -> str:
             letter-spacing: -0.02em;
           }
 
-          .card p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.75;
-          }
-
+          .card p, .small-note, ul { color: var(--muted); line-height: 1.7; }
           .metric {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             gap: 16px;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 11px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
             color: var(--muted);
           }
 
-          .metric:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-          }
-
-          .metric strong {
-            color: var(--text);
-            font-weight: 700;
-            text-align: right;
-          }
-
-          .actions {
-            margin-top: 22px;
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 12px;
-          }
-
+          .metric:last-child { border-bottom: none; padding-bottom: 0; }
           .pill {
+            justify-content: center;
             padding: 14px 12px;
-            text-align: center;
             border-radius: 16px;
             background: linear-gradient(180deg, rgba(13, 32, 60, 0.96), rgba(9, 20, 38, 0.88));
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255,255,255,0.08);
             color: var(--text);
-            font-size: 14px;
             font-weight: 600;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
           }
 
-          .callout-grid {
-            margin-top: 22px;
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 22px;
+          .task-chip {
+            border-radius: 20px;
+            display: block;
+          }
+
+          .task-chip.easy { border-color: rgba(74, 222, 128, 0.25); }
+          .task-chip.medium { border-color: rgba(251, 191, 36, 0.25); }
+          .task-chip.hard { border-color: rgba(251, 113, 133, 0.25); }
+
+          code, pre {
+            font-family: Consolas, monospace;
+          }
+
+          code { color: var(--cyan); }
+          pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #d7e8ff;
+            font-size: 12px;
+            line-height: 1.55;
           }
 
           ul {
             margin: 0;
             padding-left: 18px;
-            color: var(--muted);
-            line-height: 1.8;
           }
 
-          li + li {
-            margin-top: 6px;
-          }
-
-          code {
-            color: var(--cyan);
-            font-family: Consolas, monospace;
-            font-size: 13px;
-          }
-
-          .mini-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-            margin-top: 14px;
-          }
-
-          .mini-card {
-            border-radius: 18px;
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-          }
-
-          .mini-card span {
-            display: block;
-            color: var(--muted);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 6px;
-          }
-
-          .mini-card strong {
-            color: var(--text);
-            font-size: 15px;
-          }
-
-          .footer {
-            margin-top: 24px;
+          .control-row {
             display: flex;
-            flex-wrap: wrap;
             gap: 12px;
+            flex-wrap: wrap;
             align-items: center;
           }
 
-          .meta-note {
-            margin-left: auto;
-            font-size: 13px;
+          select, button {
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            padding: 12px 14px;
+            font: inherit;
+          }
+
+          button {
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #06101c;
+            font-weight: 800;
+            box-shadow: 0 12px 28px rgba(255, 122, 24, 0.24);
+          }
+
+          button.secondary {
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            box-shadow: none;
+          }
+
+          .result-shell {
+            margin-top: 16px;
+            display: grid;
+            gap: 14px;
+          }
+
+          .result-banner {
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+          }
+
+          .result-banner.ok { border-color: rgba(74, 222, 128, 0.25); }
+          .result-banner.fail { border-color: rgba(251, 113, 133, 0.25); }
+
+          .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          .result-stat {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+          }
+
+          .result-stat span {
+            display: block;
             color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+
+          .result-stat strong {
+            font-size: 18px;
+            color: var(--text);
+          }
+
+          .panel-stack {
+            display: grid;
+            gap: 12px;
+          }
+
+          .log-panel {
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(1, 6, 16, 0.55);
+            padding: 14px;
+            min-height: 160px;
+          }
+
+          .footer {
+            margin-top: 22px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
           }
 
           .link {
@@ -395,58 +452,35 @@ def landing_page() -> str:
             color: #06101c;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             font-weight: 800;
-            box-shadow: 0 12px 28px rgba(255, 122, 24, 0.28);
           }
 
           .link.secondary {
             color: var(--text);
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255,255,255,0.06);
             border: 1px solid var(--border);
-            box-shadow: none;
           }
 
-          @media (max-width: 980px) {
-            .hero-highlight,
-            .hero-grid,
-            .section,
-            .callout-grid,
-            .actions,
-            .mini-grid {
+          .meta-note {
+            margin-left: auto;
+            font-size: 13px;
+            color: var(--muted);
+          }
+
+          .hidden { display: none; }
+
+          @media (max-width: 1040px) {
+            .hero-highlight, .hero-grid, .section, .callout-grid, .metrics-grid, .actions, .result-grid, .two-col, .topbar {
               grid-template-columns: 1fr;
             }
-
-            .metric {
-              align-items: flex-start;
-              flex-direction: column;
-            }
-
-            .metric strong {
-              text-align: left;
-            }
-
-            .meta-note {
-              margin-left: 0;
-            }
+            .metric { flex-direction: column; align-items: flex-start; }
+            .meta-note { margin-left: 0; }
           }
 
           @media (max-width: 640px) {
-            .shell {
-              width: min(100% - 18px, 1200px);
-              padding-top: 18px;
-            }
-
-            .hero {
-              padding: 22px;
-              border-radius: 24px;
-            }
-
-            h1 {
-              font-size: clamp(38px, 18vw, 64px);
-            }
-
-            .lead {
-              font-size: 16px;
-            }
+            .shell { width: min(100% - 18px, 1280px); padding-top: 18px; }
+            .hero { padding: 22px; border-radius: 24px; }
+            h1 { font-size: clamp(38px, 18vw, 64px); }
+            .lead { font-size: 16px; }
           }
         </style>
       </head>
@@ -454,49 +488,49 @@ def landing_page() -> str:
         <main class="shell">
           <section class="hero">
             <div class="topbar">
-              <div class="badge">🚨 Sev1Bench · OpenEnv Incident Response Environment</div>
-              <div class="status-chip"><span class="status-dot"></span> Live on Hugging Face Spaces</div>
+              <div class="badge">🚨 Sev1Bench · OpenEnv Incident Response Benchmark</div>
+              <div class="status-chip"><span class="status-dot"></span> Hugging Face Space + LiteLLM-ready runtime</div>
             </div>
 
             <h1>Sev1Bench</h1>
 
             <p class="lead">
-              <strong>Sev1Bench</strong> is a high-signal Meta/OpenEnv-style incident-response benchmark where an agent
-              must inspect deterministic evidence, identify the real failing service, apply the correct remediation,
-              communicate truthfully, and restore system health. The landing page is reviewer-facing, while the API
-              remains the canonical OpenEnv evaluation interface.
+              <strong>Sev1Bench</strong> evaluates whether an agent can investigate deterministic evidence, identify the
+              true failing service, apply the correct remediation, communicate truthfully, and restore production health.
+              This interface now includes a built-in Hugging Face test runner so reviewers can trigger a live benchmark
+              episode and inspect the values returned from the configured runtime.
             </p>
 
             <div class="hero-highlight">
-              <div class="highlight"><span>Mode</span><strong>Live OpenEnv deployment</strong></div>
+              <div class="highlight"><span>Runtime</span><strong>Environment-driven LiteLLM / HF config</strong></div>
               <div class="highlight"><span>Tasks</span><strong>easy · medium · hard</strong></div>
-              <div class="highlight"><span>Validation</span><strong><code>inference.py</code> compatible</strong></div>
-              <div class="highlight"><span>Focus</span><strong>Investigate → Fix → Communicate</strong></div>
+              <div class="highlight"><span>Entrypoint</span><strong><code>inference.py</code></strong></div>
+              <div class="highlight"><span>Goal</span><strong>Investigate → Fix → Communicate</strong></div>
             </div>
 
             <div class="judge-banner">
-              Designed for hackathon judging: clear environment scope, root entrypoint visibility, Hugging Face Space
-              identity, GitHub repository reference, action surface preview, and direct documentation access without
-              obscuring the real OpenEnv endpoints.
+              No proxy URL or key is hardcoded in the evaluator. The live run depends on the environment variables
+              injected into the Space or test harness, which is what hackathon judges expect when validating LiteLLM
+              proxy usage.
             </div>
 
             <div class="hero-grid">
               <div class="card">
-                <h2>What judges need to confirm</h2>
-                <div class="metric"><span>Environment server</span><strong>Running</strong></div>
-                <div class="metric"><span>Framework</span><strong>FastAPI + OpenEnv</strong></div>
-                <div class="metric"><span>Task coverage</span><strong>easy · medium · hard</strong></div>
-                <div class="metric"><span>Evaluation flow</span><strong>Investigate → Remediate → Communicate → Resolve</strong></div>
-                <div class="metric"><span>Verification path</span><strong>Programmatic API + browser overview</strong></div>
+                <h2>Why this passes the proxy requirement better</h2>
+                <div class="metric"><span><code>API_BASE_URL</code></span><strong>Required from runtime environment</strong></div>
+                <div class="metric"><span><code>HF_TOKEN</code></span><strong>Required from runtime environment</strong></div>
+                <div class="metric"><span><code>MODEL_NAME</code></span><strong>Optional env override, fallback only</strong></div>
+                <div class="metric"><span>OpenAI client target</span><strong>Always uses provided base URL</strong></div>
+                <div class="metric"><span>Review visibility</span><strong>Config surfaced in UI test results</strong></div>
               </div>
 
               <div class="card">
                 <h2>Submission contract</h2>
-                <div class="metric"><span>Root entrypoint</span><strong><code>inference.py</code></strong></div>
                 <div class="metric"><span>Environment app</span><strong><code>server/app.py</code></strong></div>
-                <div class="metric"><span>Env class</span><strong><code>IncidentResponseEnvironment</code></strong></div>
+                <div class="metric"><span>Evaluation entrypoint</span><strong><code>inference.py</code></strong></div>
                 <div class="metric"><span>Space slug</span><strong><code>Krrishya/Sev1Bench</code></strong></div>
-                <div class="metric"><span>Status</span><strong>Live, verified, ready</strong></div>
+                <div class="metric"><span>API docs</span><strong><code>/docs</code></strong></div>
+                <div class="metric"><span>Live tester route</span><strong><code>/ui/test-run</code></strong></div>
               </div>
             </div>
 
@@ -510,52 +544,90 @@ def landing_page() -> str:
 
             <div class="section">
               <div class="card">
-                <h2>Environment guarantees</h2>
-                <ul>
-                  <li>Deterministic task-specific evidence and root-cause discovery.</li>
-                  <li>Typed OpenEnv action and observation contracts.</li>
-                  <li>Reward shaping across investigation, remediation, and truthful communication.</li>
-                  <li>Terminal success only after genuine recovery conditions are met.</li>
-                  <li>Interface supports both human review and agent-driven verification.</li>
-                </ul>
+                <h2>Scenario matrix</h2>
+                <div class="metrics-grid">
+                  <div class="task-chip easy"><span>easy</span><strong>api-service · rollback</strong></div>
+                  <div class="task-chip medium"><span>medium</span><strong>auth-service · restart</strong></div>
+                  <div class="task-chip hard"><span>hard</span><strong>db-cluster · scale up</strong></div>
+                  <div class="task-chip"><span>Success condition</span><strong>health ≥ 0.99 + truthful update</strong></div>
+                </div>
               </div>
 
               <div class="card">
-                <h2>Submission details</h2>
+                <h2>Reviewer workflow</h2>
                 <ul>
-                  <li>GitHub repository: <code>github.com/krrishyaa/Sev1Bench</code></li>
-                  <li>Hugging Face Space: <code>Krrishya/Sev1Bench</code></li>
-                  <li>Primary verification path: run <code>python inference.py</code> against this deployment.</li>
-                  <li>API docs remain available at <code>/docs</code> for endpoint inspection.</li>
-                  <li>Browser landing page is presentation-only; the OpenEnv API is the canonical evaluation surface.</li>
+                  <li>Inspect the live OpenEnv endpoints in <code>/docs</code>.</li>
+                  <li>Run a browser-side test below against the same runtime configuration.</li>
+                  <li>Confirm the response shows the model, proxy base URL, step logs, and final score.</li>
+                  <li>Verify the repo still uses the canonical programmatic evaluation flow.</li>
                 </ul>
               </div>
             </div>
 
             <div class="callout-grid">
               <div class="card">
-                <h2>Hackathon-fit presentation</h2>
+                <h2>Run a live Hugging Face test</h2>
                 <p>
-                  The interface is intentionally concise, premium, and reviewer-friendly: it surfaces benchmark identity,
-                  evaluation semantics, deployment status, and verification pointers without claiming unsupported features
-                  or changing the actual environment behavior.
+                  This executes the same benchmark logic used by <code>inference.py</code> and returns the values the
+                  Space saw at runtime, including the effective base URL, model, success flag, score, rewards, and log lines.
                 </p>
-                <div class="mini-grid">
-                  <div class="mini-card"><span>Audience</span><strong>Meta / OpenEnv judges</strong></div>
-                  <div class="mini-card"><span>Surface</span><strong>Hugging Face Space UI + API docs</strong></div>
-                  <div class="mini-card"><span>Compatibility</span><strong>OpenEnv agent loop</strong></div>
-                  <div class="mini-card"><span>Purpose</span><strong>Benchmark submission readiness</strong></div>
+
+                <div class="control-row" style="margin-top:14px;">
+                  <label for="task-select" class="small-note">Task</label>
+                  <select id="task-select">
+                    <option value="easy">easy</option>
+                    <option value="medium">medium</option>
+                    <option value="hard">hard</option>
+                  </select>
+                  <button id="run-test-btn" type="button">Run test on Hugging Face</button>
+                  <button id="clear-test-btn" class="secondary" type="button">Clear</button>
+                </div>
+
+                <div id="result-shell" class="result-shell hidden">
+                  <div id="result-banner" class="result-banner"></div>
+
+                  <div class="result-grid">
+                    <div class="result-stat"><span>Task</span><strong id="result-task">—</strong></div>
+                    <div class="result-stat"><span>Success</span><strong id="result-success">—</strong></div>
+                    <div class="result-stat"><span>Steps</span><strong id="result-steps">—</strong></div>
+                    <div class="result-stat"><span>Score</span><strong id="result-score">—</strong></div>
+                  </div>
+
+                  <div class="two-col">
+                    <div class="panel-stack">
+                      <div class="card">
+                        <span class="eyebrow">Runtime values</span>
+                        <div class="metric"><span>Model</span><strong id="result-model">—</strong></div>
+                        <div class="metric"><span>API base URL</span><strong id="result-base-url">—</strong></div>
+                        <div class="metric"><span>Rewards</span><strong id="result-rewards">—</strong></div>
+                      </div>
+                      <div class="log-panel">
+                        <span class="eyebrow">LLM request logs</span>
+                        <pre id="result-llm-logs">No run yet.</pre>
+                      </div>
+                    </div>
+
+                    <div class="panel-stack">
+                      <div class="log-panel">
+                        <span class="eyebrow">Step logs</span>
+                        <pre id="result-step-logs">No run yet.</pre>
+                      </div>
+                      <div class="log-panel">
+                        <span class="eyebrow">Raw response</span>
+                        <pre id="result-json">No run yet.</pre>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div class="card">
-                <h2>Quick reviewer checklist</h2>
+                <h2>What the tester proves</h2>
                 <ul>
-                  <li>Open the GitHub repo and inspect implementation files.</li>
-                  <li>Use <code>/docs</code> to inspect the live API schema.</li>
-                  <li>Run <code>python inference.py</code> against the Space endpoint.</li>
-                  <li>Confirm tasks cover incident investigation, remediation, and communication.</li>
-                  <li>Verify the landing page metadata matches the actual deployment contract.</li>
+                  <li>The Space can trigger a real benchmark episode without hardcoded proxy credentials.</li>
+                  <li>The frontend exposes the actual values returned by the backend run.</li>
+                  <li>The logs make it obvious whether an LLM request was attempted through the configured runtime.</li>
+                  <li>The same contract remains available for automated hackathon validation.</li>
                 </ul>
               </div>
             </div>
@@ -567,8 +639,113 @@ def landing_page() -> str:
             </div>
           </section>
         </main>
+
+        <script>
+          const runButton = document.getElementById("run-test-btn");
+          const clearButton = document.getElementById("clear-test-btn");
+          const taskSelect = document.getElementById("task-select");
+          const resultShell = document.getElementById("result-shell");
+          const resultBanner = document.getElementById("result-banner");
+
+          const fields = {
+            task: document.getElementById("result-task"),
+            success: document.getElementById("result-success"),
+            steps: document.getElementById("result-steps"),
+            score: document.getElementById("result-score"),
+            model: document.getElementById("result-model"),
+            baseUrl: document.getElementById("result-base-url"),
+            rewards: document.getElementById("result-rewards"),
+            llmLogs: document.getElementById("result-llm-logs"),
+            stepLogs: document.getElementById("result-step-logs"),
+            json: document.getElementById("result-json")
+          };
+
+          function resetOutput() {
+            resultShell.classList.add("hidden");
+            resultBanner.className = "result-banner";
+            resultBanner.textContent = "";
+            fields.task.textContent = "—";
+            fields.success.textContent = "—";
+            fields.steps.textContent = "—";
+            fields.score.textContent = "—";
+            fields.model.textContent = "—";
+            fields.baseUrl.textContent = "—";
+            fields.rewards.textContent = "—";
+            fields.llmLogs.textContent = "No run yet.";
+            fields.stepLogs.textContent = "No run yet.";
+            fields.json.textContent = "No run yet.";
+          }
+
+          async function runTest() {
+            const task = taskSelect.value;
+            resultShell.classList.remove("hidden");
+            resultBanner.className = "result-banner";
+            resultBanner.textContent = "Running live benchmark episode...";
+            fields.task.textContent = task;
+            fields.success.textContent = "Pending";
+            fields.steps.textContent = "…";
+            fields.score.textContent = "…";
+            fields.model.textContent = "Loading…";
+            fields.baseUrl.textContent = "Loading…";
+            fields.rewards.textContent = "Loading…";
+            fields.llmLogs.textContent = "Waiting for backend response...";
+            fields.stepLogs.textContent = "Waiting for backend response...";
+            fields.json.textContent = "Waiting for backend response...";
+
+            try {
+              const response = await fetch(`/ui/test-run?task_id=${encodeURIComponent(task)}`);
+              const data = await response.json();
+
+              fields.json.textContent = JSON.stringify(data, null, 2);
+
+              if (!response.ok || !data.ok) {
+                resultBanner.className = "result-banner fail";
+                resultBanner.textContent = `Run failed: ${data.error_type || "Error"} - ${data.error || "Unknown error"}`;
+                fields.success.textContent = "false";
+                fields.steps.textContent = "0";
+                fields.score.textContent = "0.000";
+                fields.model.textContent = data.model_name || "Unavailable";
+                fields.baseUrl.textContent = data.api_base_url || "Unavailable";
+                fields.rewards.textContent = "[]";
+                fields.llmLogs.textContent = data.llm_log_lines?.join("\\n") || "No LLM logs captured.";
+                fields.stepLogs.textContent = data.step_log_lines?.join("\\n") || "No step logs captured.";
+                return;
+              }
+
+              resultBanner.className = `result-banner ${data.success ? "ok" : "fail"}`;
+              resultBanner.textContent = data.success
+                ? "Run completed successfully through the configured runtime."
+                : "Run completed but did not fully resolve the incident.";
+              fields.task.textContent = data.task_id;
+              fields.success.textContent = String(data.success);
+              fields.steps.textContent = String(data.steps);
+              fields.score.textContent = Number(data.score).toFixed(3);
+              fields.model.textContent = data.model_name || "Unavailable";
+              fields.baseUrl.textContent = data.api_base_url || "Unavailable";
+              fields.rewards.textContent = Array.isArray(data.rewards) ? data.rewards.map((value) => Number(value).toFixed(2)).join(", ") : "[]";
+              fields.llmLogs.textContent = data.llm_log_lines?.join("\\n") || "No LLM logs captured.";
+              fields.stepLogs.textContent = data.step_log_lines?.join("\\n") || "No step logs captured.";
+            } catch (error) {
+              resultBanner.className = "result-banner fail";
+              resultBanner.textContent = `Run failed: ${error}`;
+              fields.success.textContent = "false";
+              fields.steps.textContent = "0";
+              fields.score.textContent = "0.000";
+              fields.model.textContent = "Unavailable";
+              fields.baseUrl.textContent = "Unavailable";
+              fields.rewards.textContent = "[]";
+              fields.llmLogs.textContent = "No LLM logs captured.";
+              fields.stepLogs.textContent = "No step logs captured.";
+              fields.json.textContent = JSON.stringify({ error: String(error) }, null, 2);
+            }
+          }
+
+          runButton.addEventListener("click", runTest);
+          clearButton.addEventListener("click", resetOutput);
+          resetOutput();
+        </script>
       </body>
-            </html>
+    </html>
     """
 
 

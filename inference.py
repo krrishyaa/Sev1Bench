@@ -17,10 +17,11 @@ from server.environment import IncidentResponseEnvironment
 IMAGE_NAME = os.getenv("IMAGE_NAME")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
 TASK_NAME = os.getenv("TASK_ID", "easy")
 BENCHMARK = "sev1bench"
+DEFAULT_MODEL_NAME = "openai/gpt-4o-mini"
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -44,13 +45,20 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     )
 
 
-def log_runtime_config(task: str, model: str, api_base_url: str, hf_token_present: bool) -> None:
+def log_runtime_config(
+    task: str,
+    model: str,
+    api_base_url: str,
+    hf_token_present: bool,
+    using_proxy_env: bool,
+) -> None:
     print(
         "[CONFIG] "
         f"task={task} "
         f"model={model} "
         f"api_base_url={api_base_url} "
-        f"hf_token_present={str(hf_token_present).lower()}",
+        f"hf_token_present={str(hf_token_present).lower()} "
+        f"using_proxy_env={str(using_proxy_env).lower()}",
         flush=True,
     )
 
@@ -229,6 +237,24 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
     return None
 
 
+def resolve_runtime_config() -> tuple[str, str]:
+    if HF_TOKEN is None:
+        raise ValueError("HF_TOKEN environment variable is required")
+    if not HF_TOKEN.strip():
+        raise ValueError("HF_TOKEN must not be empty")
+
+    if API_BASE_URL is None:
+        raise ValueError("API_BASE_URL environment variable is required")
+    if not API_BASE_URL.strip():
+        raise ValueError("API_BASE_URL must not be empty")
+
+    resolved_model = (MODEL_NAME or DEFAULT_MODEL_NAME).strip()
+    if not resolved_model:
+        raise ValueError("MODEL_NAME resolved to an empty value")
+
+    return API_BASE_URL.strip(), resolved_model
+
+
 def _query_llm_once(client: OpenAI, model_name: str, observation: Any) -> dict[str, Any]:
     prompt = _build_prompt(observation)
     log_llm_attempt(model_name)
@@ -324,21 +350,15 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, 
 
 
 def main() -> int:
-    if not MODEL_NAME:
-        raise ValueError("MODEL_NAME must not be empty")
-    if not API_BASE_URL.strip():
-        raise ValueError("API_BASE_URL must not be empty")
-    if HF_TOKEN is None:
-        raise ValueError("HF_TOKEN environment variable is required")
-    if not HF_TOKEN.strip():
-        raise ValueError("HF_TOKEN must not be empty")
+    api_base_url, model_name = resolve_runtime_config()
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=TASK_NAME, env=BENCHMARK, model=model_name)
     log_runtime_config(
         task=TASK_NAME,
-        model=MODEL_NAME,
-        api_base_url=API_BASE_URL,
+        model=model_name,
+        api_base_url=api_base_url,
         hf_token_present=bool(HF_TOKEN and HF_TOKEN.strip()),
+        using_proxy_env=True,
     )
 
     success = False
@@ -349,13 +369,13 @@ def main() -> int:
 
     try:
         client = OpenAI(
-            base_url=API_BASE_URL,
+            base_url=api_base_url,
             api_key=HF_TOKEN,
         )
         success, steps, score, rewards = run_task(
             task_id=TASK_NAME,
             client=client,
-            model_name=MODEL_NAME,
+            model_name=model_name,
         )
     except Exception:
         print(traceback.format_exc(limit=3), file=sys.stderr, flush=True)
