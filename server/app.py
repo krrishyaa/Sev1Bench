@@ -509,19 +509,18 @@ def landing_page() -> str:
             </div>
 
             <div class="judge-banner">
-              No proxy URL or key is hardcoded in the evaluator. The live run depends on the environment variables
-              injected into the Space or test harness, which is what hackathon judges expect when validating LiteLLM
-              proxy usage.
+              Built as a polished incident-response benchmark surface for Hugging Face Spaces: premium presentation,
+              live runtime validation, and a cleaner reviewer experience around tasks, metrics, and execution traces.
             </div>
 
             <div class="hero-grid">
               <div class="card">
-                <h2>Why this passes the proxy requirement better</h2>
-                <div class="metric"><span><code>API_BASE_URL</code></span><strong>Required from runtime environment</strong></div>
-                <div class="metric"><span><code>HF_TOKEN</code></span><strong>Required from runtime environment</strong></div>
-                <div class="metric"><span><code>MODEL_NAME</code></span><strong>Optional env override, fallback only</strong></div>
-                <div class="metric"><span>OpenAI client target</span><strong>Always uses provided base URL</strong></div>
-                <div class="metric"><span>Review visibility</span><strong>Config surfaced in UI test results</strong></div>
+                <h2>Live benchmark cockpit</h2>
+                <div class="metric"><span>Experience</span><strong>Premium, reviewer-facing, HF-native UI</strong></div>
+                <div class="metric"><span>Runtime telemetry</span><strong>Model, score, rewards, steps, request logs</strong></div>
+                <div class="metric"><span>Execution mode</span><strong>Interactive task runs from the landing page</strong></div>
+                <div class="metric"><span>Validation flow</span><strong>One-click benchmark run with raw output inspection</strong></div>
+                <div class="metric"><span>Design goal</span><strong>Fast trust-building for judges and builders</strong></div>
               </div>
 
               <div class="card">
@@ -568,8 +567,8 @@ def landing_page() -> str:
               <div class="card">
                 <h2>Run a live Hugging Face test</h2>
                 <p>
-                  This executes the same benchmark logic used by <code>inference.py</code> and returns the values the
-                  Space saw at runtime, including the effective base URL, model, success flag, score, rewards, and log lines.
+                  Launch a benchmark episode directly from the landing page and inspect a richer result surface with
+                  run status, execution metrics, rewards, request traces, and raw backend output in one place.
                 </p>
 
                 <div class="control-row" style="margin-top:14px;">
@@ -622,12 +621,12 @@ def landing_page() -> str:
               </div>
 
               <div class="card">
-                <h2>What the tester proves</h2>
+                <h2>What this interface does better</h2>
                 <ul>
-                  <li>The Space can trigger a real benchmark episode without hardcoded proxy credentials.</li>
-                  <li>The frontend exposes the actual values returned by the backend run.</li>
-                  <li>The logs make it obvious whether an LLM request was attempted through the configured runtime.</li>
-                  <li>The same contract remains available for automated hackathon validation.</li>
+                  <li>Presents Sev1Bench like a polished product instead of a basic landing page.</li>
+                  <li>Lets reviewers trigger benchmark runs without leaving the Space homepage.</li>
+                  <li>Surfaces the most important outputs immediately: success, score, steps, rewards, and logs.</li>
+                  <li>Keeps the raw API contract available while making the visual review experience feel top tier.</li>
                 </ul>
               </div>
             </div>
