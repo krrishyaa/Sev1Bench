@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import json
 import os
 import sys
 from contextlib import redirect_stderr, redirect_stdout
@@ -12,8 +11,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from openenv.core.env_server import create_fastapi_app
 from openai import OpenAI
 
-from models import IncidentAction, IncidentObservation
 from inference import resolve_runtime_config, run_task
+from models import IncidentAction, IncidentObservation
 from .environment import IncidentResponseEnvironment
 
 
@@ -47,7 +46,11 @@ print("API_BASE_URL=", os.getenv("API_BASE_URL"), file=sys.stderr, flush=True)
 print("MODEL_NAME=", os.getenv("MODEL_NAME"), file=sys.stderr, flush=True)
 print("HF_TOKEN set=", os.getenv("HF_TOKEN") is not None, file=sys.stderr, flush=True)
 
-app = create_fastapi_app(IncidentResponseEnvironment, IncidentAction, IncidentObservation) if create_fastapi_app is not None else _fallback_app()
+app = (
+    create_fastapi_app(IncidentResponseEnvironment, IncidentAction, IncidentObservation)
+    if create_fastapi_app is not None
+    else _fallback_app()
+)
 
 
 @app.get("/ui/test-run")
@@ -111,23 +114,28 @@ def landing_page() -> str:
         <title>Sev1Bench</title>
         <style>
           :root {
-            color-scheme: dark;
-            --bg: #040814;
-            --bg-2: #081221;
-            --panel: rgba(8, 18, 33, 0.82);
-            --panel-strong: rgba(10, 23, 42, 0.94);
-            --panel-soft: rgba(255, 255, 255, 0.045);
-            --border: rgba(255, 255, 255, 0.08);
-            --text: #eef5ff;
-            --muted: #9ab0cf;
-            --accent: #ff7a18;
-            --accent-2: #ffb703;
-            --cyan: #67e8f9;
-            --green: #4ade80;
-            --blue: #60a5fa;
-            --danger: #fb7185;
-            --warning: #fbbf24;
-            --shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+            color-scheme: light;
+            --bg: #f6f2ea;
+            --bg-soft: #fbf8f3;
+            --surface: rgba(255, 255, 255, 0.72);
+            --surface-strong: rgba(255, 255, 255, 0.88);
+            --surface-solid: #ffffff;
+            --border: rgba(122, 100, 75, 0.12);
+            --border-strong: rgba(122, 100, 75, 0.18);
+            --text: #1f2937;
+            --text-soft: #5f6b7a;
+            --title: #182230;
+            --accent: #d97757;
+            --accent-strong: #bc5f3f;
+            --mint: #d7efe6;
+            --blue-soft: #e6eefb;
+            --amber-soft: #f6ead6;
+            --rose-soft: #f8e6e6;
+            --shadow: 0 30px 80px rgba(84, 62, 42, 0.10);
+            --glass-shadow: 0 18px 45px rgba(78, 56, 36, 0.08);
+            --radius-xl: 30px;
+            --radius-lg: 22px;
+            --radius-md: 18px;
           }
 
           * { box-sizing: border-box; }
@@ -136,13 +144,12 @@ def landing_page() -> str:
           body {
             margin: 0;
             min-height: 100vh;
-            font-family: Inter, Segoe UI, Arial, sans-serif;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
             color: var(--text);
             background:
-              radial-gradient(circle at 0% 0%, rgba(255, 122, 24, 0.18), transparent 25%),
-              radial-gradient(circle at 100% 10%, rgba(103, 232, 249, 0.12), transparent 22%),
-              radial-gradient(circle at 50% 100%, rgba(96, 165, 250, 0.12), transparent 28%),
-              linear-gradient(180deg, var(--bg) 0%, #02050d 100%);
+              radial-gradient(circle at top left, rgba(240, 212, 191, 0.75), transparent 24%),
+              radial-gradient(circle at top right, rgba(220, 235, 246, 0.85), transparent 22%),
+              linear-gradient(180deg, #fcfaf6 0%, var(--bg) 46%, #f3ede2 100%);
           }
 
           body::before {
@@ -150,48 +157,43 @@ def landing_page() -> str:
             position: fixed;
             inset: 0;
             pointer-events: none;
-            background-image:
-              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 36px 36px;
-            mask-image: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.95));
-            opacity: 0.18;
+            background:
+              linear-gradient(rgba(255,255,255,0.28), rgba(255,255,255,0.28)),
+              linear-gradient(120deg, rgba(255,255,255,0.35), transparent 36%);
+            opacity: 0.6;
           }
 
-          .shell {
-            width: min(1280px, calc(100% - 30px));
-            margin: 0 auto;
-            padding: 24px 0 60px;
+          .page {
             position: relative;
             z-index: 1;
+            width: min(1240px, calc(100% - 36px));
+            margin: 0 auto;
+            padding: 28px 0 64px;
           }
 
           .hero {
-            position: relative;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.68));
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             overflow: hidden;
-            border-radius: 32px;
-            padding: 30px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background:
-              radial-gradient(circle at 15% 18%, rgba(255, 183, 3, 0.16), transparent 18%),
-              radial-gradient(circle at 85% 16%, rgba(103, 232, 249, 0.10), transparent 18%),
-              radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.12), transparent 26%),
-              linear-gradient(135deg, rgba(255, 122, 24, 0.10), rgba(10, 22, 42, 0.96) 35%, rgba(4, 9, 20, 0.98));
-            box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
           }
 
-          .hero::after {
-            content: "";
-            position: absolute;
-            inset: auto -80px -80px auto;
-            width: 260px;
-            height: 260px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 122, 24, 0.18), transparent 65%);
-            filter: blur(8px);
+          .hero-inner {
+            padding: 28px;
           }
 
-          .topbar, .hero-grid, .section, .callout-grid, .metrics-grid, .two-col {
+          .topbar,
+          .hero-main,
+          .signal-row,
+          .priority-grid,
+          .detail-grid,
+          .runner-grid,
+          .result-grid,
+          .insight-grid,
+          .footer-row {
             display: grid;
             gap: 18px;
           }
@@ -201,440 +203,739 @@ def landing_page() -> str:
             align-items: center;
           }
 
-          .badge, .status-chip, .task-chip, .pill {
+          .hero-main {
+            grid-template-columns: 1.1fr 0.9fr;
+            margin-top: 18px;
+            align-items: start;
+          }
+
+          .signal-row,
+          .priority-grid,
+          .detail-grid,
+          .insight-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+
+          .runner-grid {
+            grid-template-columns: 1.2fr 0.8fr;
+            margin-top: 24px;
+          }
+
+          .result-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+
+          .footer-row {
+            grid-template-columns: auto auto 1fr;
+            align-items: center;
+            margin-top: 26px;
+          }
+
+          .eyebrow,
+          .mini-label,
+          .stat-label,
+          .panel-label {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 11px;
+            font-weight: 700;
+            color: #7a6c5d;
+          }
+
+          .brand-pill,
+          .status-pill {
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            border-radius: 999px;
             padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(122, 100, 75, 0.12);
+            box-shadow: 0 8px 24px rgba(78, 56, 36, 0.06);
             font-size: 13px;
-          }
-
-          .badge {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.08);
-            color: var(--muted);
-          }
-
-          .status-chip {
-            background: rgba(10, 26, 47, 0.82);
-            border: 1px solid rgba(103, 232, 249, 0.28);
+            color: var(--text-soft);
           }
 
           .status-dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 16px rgba(74, 222, 128, 0.75);
+            background: #67b58d;
+            box-shadow: 0 0 0 6px rgba(103, 181, 141, 0.14);
           }
 
           h1 {
-            margin: 20px 0 12px;
-            max-width: 820px;
-            font-size: clamp(42px, 8vw, 82px);
-            line-height: 0.93;
+            margin: 14px 0 14px;
+            font-size: clamp(44px, 7vw, 78px);
+            line-height: 0.95;
             letter-spacing: -0.06em;
+            color: var(--title);
           }
 
           .lead {
             margin: 0;
-            max-width: 820px;
+            max-width: 720px;
             font-size: 18px;
             line-height: 1.8;
-            color: var(--muted);
+            color: var(--text-soft);
           }
 
-          .lead strong, .metric strong, .highlight strong, .mini-card strong, .task-chip strong { color: var(--text); }
+          .lead strong,
+          .stat-value,
+          .feature-card strong,
+          .glass-card strong,
+          .scenario-card strong {
+            color: var(--title);
+          }
 
-          .hero-highlight, .metrics-grid, .actions {
+          .hero-copy {
+            padding-right: 8px;
+          }
+
+          .signal-card,
+          .glass-card,
+          .feature-card,
+          .scenario-card,
+          .result-card,
+          .log-card {
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.78);
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+          }
+
+          .signal-card,
+          .feature-card,
+          .scenario-card,
+          .result-card {
+            padding: 18px;
+          }
+
+          .glass-card {
+            padding: 22px;
+          }
+
+          .signal-card {
+            min-height: 106px;
+          }
+
+          .signal-value {
+            display: block;
+            margin-top: 10px;
+            font-size: 15px;
+            line-height: 1.5;
+            font-weight: 700;
+          }
+
+          .feature-card p,
+          .glass-card p,
+          .small-copy,
+          ul {
+            margin: 0;
+            color: var(--text-soft);
+            line-height: 1.7;
+          }
+
+          .hero-panel {
+            display: grid;
+            gap: 16px;
+          }
+
+          .hero-panel .glass-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.66));
+          }
+
+          .section-title {
+            margin: 0 0 10px;
+            font-size: 22px;
+            letter-spacing: -0.03em;
+            color: var(--title);
+          }
+
+          .metric-list {
             display: grid;
             gap: 12px;
           }
 
-          .hero-highlight { margin-top: 22px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-          .hero-grid { margin-top: 24px; grid-template-columns: 1.2fr 0.8fr; }
-          .section, .callout-grid, .two-col { margin-top: 20px; grid-template-columns: 1fr 1fr; }
-          .metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-          .actions { margin-top: 18px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-
-          .highlight, .mini-card, .task-chip {
-            padding: 16px 18px;
-            border-radius: 18px;
-            background: var(--panel-soft);
-            border: 1px solid rgba(255,255,255,0.08);
-          }
-
-          .highlight span, .mini-card span, .eyebrow {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--muted);
-          }
-
-          .judge-banner, .card {
-            border: 1px solid var(--border);
-            border-radius: 24px;
-          }
-
-          .judge-banner {
-            margin-top: 18px;
-            padding: 16px 18px;
-            background: linear-gradient(90deg, rgba(255, 122, 24, 0.12), rgba(96, 165, 250, 0.08));
-            line-height: 1.7;
-          }
-
-          .card {
-            background: linear-gradient(180deg, rgba(10, 22, 42, 0.88), rgba(8, 18, 33, 0.78));
-            padding: 22px;
-            backdrop-filter: blur(14px);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px rgba(0,0,0,0.18);
-          }
-
-          .card h2 {
-            margin: 0 0 14px;
-            font-size: 20px;
-            letter-spacing: -0.02em;
-          }
-
-          .card p, .small-note, ul { color: var(--muted); line-height: 1.7; }
-          .metric {
+          .metric-row {
             display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-soft);
+          }
+
+          .metric-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+
+          .metric-row strong {
+            text-align: right;
+          }
+
+          .priority-grid {
+            margin-top: 22px;
+          }
+
+          .feature-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,255,255,0.68));
+          }
+
+          .feature-card h3 {
+            margin: 10px 0 8px;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+            color: var(--title);
+          }
+
+          .runner-shell {
+            background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,255,255,0.72));
+          }
+
+          .runner-hero {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 18px;
+          }
+
+          .runner-title {
+            display: flex;
+            align-items: end;
             justify-content: space-between;
             gap: 16px;
-            padding: 11px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            color: var(--muted);
+            flex-wrap: wrap;
           }
 
-          .metric:last-child { border-bottom: none; padding-bottom: 0; }
-          .pill {
-            justify-content: center;
-            padding: 14px 12px;
-            border-radius: 16px;
-            background: linear-gradient(180deg, rgba(13, 32, 60, 0.96), rgba(9, 20, 38, 0.88));
-            border: 1px solid rgba(255,255,255,0.08);
-            color: var(--text);
-            font-weight: 600;
+          .runner-title h2 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: -0.04em;
+            color: var(--title);
           }
 
-          .task-chip {
-            border-radius: 20px;
+          .runner-highlight {
+            color: var(--accent-strong);
+            font-weight: 700;
+          }
+
+          .workflow-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.70));
+          }
+
+          .workflow-steps {
+            display: grid;
+            gap: 12px;
+            margin-top: 14px;
+          }
+
+          .workflow-step {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: start;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+          }
+
+          .workflow-step:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+
+          .step-index {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: #f1e7da;
+            color: var(--accent-strong);
+            font-weight: 800;
+            font-size: 13px;
+          }
+
+          .step-copy strong {
             display: block;
+            margin-bottom: 4px;
+            font-size: 15px;
           }
 
-          .task-chip.easy { border-color: rgba(74, 222, 128, 0.25); }
-          .task-chip.medium { border-color: rgba(251, 191, 36, 0.25); }
-          .task-chip.hard { border-color: rgba(251, 113, 133, 0.25); }
-
-          code, pre {
-            font-family: Consolas, monospace;
-          }
-
-          code { color: var(--cyan); }
-          pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-            color: #d7e8ff;
-            font-size: 12px;
-            line-height: 1.55;
-          }
-
-          ul {
-            margin: 0;
-            padding-left: 18px;
-          }
-
-          .control-row {
+          .control-bar {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
             align-items: center;
+            margin-top: 18px;
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(122, 100, 75, 0.10);
           }
 
-          select, button {
-            border: 1px solid rgba(255,255,255,0.12);
+          .control-label {
+            font-weight: 700;
+            color: var(--text-soft);
+          }
+
+          select,
+          button {
             border-radius: 14px;
-            background: rgba(255,255,255,0.06);
-            color: var(--text);
             padding: 12px 14px;
             font: inherit;
+            border: 1px solid rgba(122, 100, 75, 0.14);
+            transition: 180ms ease;
+          }
+
+          select {
+            min-width: 150px;
+            background: rgba(255,255,255,0.85);
+            color: var(--title);
           }
 
           button {
             cursor: pointer;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            color: #06101c;
             font-weight: 800;
-            box-shadow: 0 12px 28px rgba(255, 122, 24, 0.24);
+          }
+
+          button.primary {
+            background: linear-gradient(135deg, #e88c68, #d97757);
+            color: white;
+            box-shadow: 0 14px 30px rgba(217, 119, 87, 0.24);
           }
 
           button.secondary {
-            background: rgba(255,255,255,0.06);
-            color: var(--text);
-            box-shadow: none;
+            background: rgba(255,255,255,0.75);
+            color: var(--title);
+          }
+
+          button:hover,
+          select:hover {
+            transform: translateY(-1px);
           }
 
           .result-shell {
-            margin-top: 16px;
+            margin-top: 18px;
             display: grid;
             gap: 14px;
           }
 
           .result-banner {
-            padding: 14px 16px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-          }
-
-          .result-banner.ok { border-color: rgba(74, 222, 128, 0.25); }
-          .result-banner.fail { border-color: rgba(251, 113, 133, 0.25); }
-
-          .result-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-          }
-
-          .result-stat {
-            padding: 14px;
-            border-radius: 16px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.06);
-          }
-
-          .result-stat span {
-            display: block;
-            color: var(--muted);
-            font-size: 12px;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-          }
-
-          .result-stat strong {
-            font-size: 18px;
-            color: var(--text);
-          }
-
-          .panel-stack {
-            display: grid;
-            gap: 12px;
-          }
-
-          .log-panel {
+            padding: 16px 18px;
             border-radius: 18px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(1, 6, 16, 0.55);
-            padding: 14px;
-            min-height: 160px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(122, 100, 75, 0.12);
+            color: var(--title);
+            font-weight: 700;
           }
 
-          .footer {
-            margin-top: 22px;
-            display: flex;
+          .result-banner.ok {
+            background: rgba(215, 239, 230, 0.9);
+            border-color: rgba(103, 181, 141, 0.24);
+          }
+
+          .result-banner.fail {
+            background: rgba(248, 230, 230, 0.92);
+            border-color: rgba(196, 105, 105, 0.20);
+          }
+
+          .result-card {
+            background: rgba(255,255,255,0.74);
+          }
+
+          .stat-value {
+            display: block;
+            margin-top: 8px;
+            font-size: 24px;
+            letter-spacing: -0.03em;
+          }
+
+          .info-panel,
+          .log-card {
+            padding: 18px;
+          }
+
+          .info-panel {
+            border-radius: var(--radius-lg);
+            background: rgba(255,255,255,0.74);
+            border: 1px solid rgba(255,255,255,0.82);
+            box-shadow: var(--glass-shadow);
+          }
+
+          .info-grid {
+            display: grid;
             gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
+          }
+
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-soft);
+          }
+
+          .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+
+          .info-row strong {
+            text-align: right;
+            color: var(--title);
+          }
+
+          .log-stack {
+            display: grid;
+            gap: 14px;
+          }
+
+          .log-card {
+            background: rgba(255,255,255,0.68);
+          }
+
+          pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.62;
+            color: #3b4452;
+          }
+
+          .scenario-card.easy { background: linear-gradient(180deg, rgba(215, 239, 230, 0.9), rgba(255,255,255,0.8)); }
+          .scenario-card.medium { background: linear-gradient(180deg, rgba(246, 234, 214, 0.92), rgba(255,255,255,0.82)); }
+          .scenario-card.hard { background: linear-gradient(180deg, rgba(248, 230, 230, 0.92), rgba(255,255,255,0.82)); }
+          .scenario-card.signal { background: linear-gradient(180deg, rgba(230, 238, 251, 0.92), rgba(255,255,255,0.82)); }
+
+          .scenario-card strong {
+            display: block;
+            margin-top: 10px;
+            font-size: 17px;
+            line-height: 1.4;
           }
 
           .link {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 13px 17px;
+            padding: 13px 18px;
             border-radius: 14px;
             text-decoration: none;
-            color: #06101c;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
             font-weight: 800;
+            color: white;
+            background: linear-gradient(135deg, #e88c68, #d97757);
+            box-shadow: 0 12px 24px rgba(217, 119, 87, 0.20);
           }
 
           .link.secondary {
-            color: var(--text);
-            background: rgba(255,255,255,0.06);
-            border: 1px solid var(--border);
+            color: var(--title);
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(122, 100, 75, 0.12);
+            box-shadow: none;
           }
 
-          .meta-note {
-            margin-left: auto;
+          .footer-note {
+            justify-self: end;
+            color: var(--text-soft);
             font-size: 13px;
-            color: var(--muted);
           }
 
           .hidden { display: none; }
 
-          @media (max-width: 1040px) {
-            .hero-highlight, .hero-grid, .section, .callout-grid, .metrics-grid, .actions, .result-grid, .two-col, .topbar {
+          @media (max-width: 1100px) {
+            .hero-main,
+            .signal-row,
+            .priority-grid,
+            .detail-grid,
+            .runner-grid,
+            .result-grid,
+            .insight-grid,
+            .footer-row,
+            .topbar {
               grid-template-columns: 1fr;
             }
-            .metric { flex-direction: column; align-items: flex-start; }
-            .meta-note { margin-left: 0; }
+
+            .footer-note {
+              justify-self: start;
+            }
           }
 
-          @media (max-width: 640px) {
-            .shell { width: min(100% - 18px, 1280px); padding-top: 18px; }
-            .hero { padding: 22px; border-radius: 24px; }
-            h1 { font-size: clamp(38px, 18vw, 64px); }
-            .lead { font-size: 16px; }
+          @media (max-width: 720px) {
+            .page {
+              width: min(100% - 18px, 1240px);
+              padding-top: 18px;
+            }
+
+            .hero-inner {
+              padding: 18px;
+            }
+
+            h1 {
+              font-size: clamp(38px, 16vw, 62px);
+            }
+
+            .lead {
+              font-size: 16px;
+            }
+
+            .control-bar {
+              align-items: stretch;
+            }
+
+            select,
+            button {
+              width: 100%;
+            }
           }
         </style>
       </head>
       <body>
-        <main class="shell">
+        <main class="page">
           <section class="hero">
-            <div class="topbar">
-              <div class="badge">🚨 Sev1Bench · OpenEnv Incident Response Benchmark</div>
-              <div class="status-chip"><span class="status-dot"></span> Hugging Face Space + LiteLLM-ready runtime</div>
-            </div>
-
-            <h1>Sev1Bench</h1>
-
-            <p class="lead">
-              <strong>Sev1Bench</strong> evaluates whether an agent can investigate deterministic evidence, identify the
-              true failing service, apply the correct remediation, communicate truthfully, and restore production health.
-              This interface now includes a built-in Hugging Face test runner so reviewers can trigger a live benchmark
-              episode and inspect the values returned from the configured runtime.
-            </p>
-
-            <div class="hero-highlight">
-              <div class="highlight"><span>Runtime</span><strong>Environment-driven LiteLLM / HF config</strong></div>
-              <div class="highlight"><span>Tasks</span><strong>easy · medium · hard</strong></div>
-              <div class="highlight"><span>Entrypoint</span><strong><code>inference.py</code></strong></div>
-              <div class="highlight"><span>Goal</span><strong>Investigate → Fix → Communicate</strong></div>
-            </div>
-
-            <div class="judge-banner">
-              Built as a polished incident-response benchmark surface for Hugging Face Spaces: premium presentation,
-              live runtime validation, and a cleaner reviewer experience around tasks, metrics, and execution traces.
-            </div>
-
-            <div class="hero-grid">
-              <div class="card">
-                <h2>Live benchmark cockpit</h2>
-                <div class="metric"><span>Experience</span><strong>Premium, reviewer-facing, HF-native UI</strong></div>
-                <div class="metric"><span>Runtime telemetry</span><strong>Model, score, rewards, steps, request logs</strong></div>
-                <div class="metric"><span>Execution mode</span><strong>Interactive task runs from the landing page</strong></div>
-                <div class="metric"><span>Validation flow</span><strong>One-click benchmark run with raw output inspection</strong></div>
-                <div class="metric"><span>Design goal</span><strong>Fast trust-building for judges and builders</strong></div>
+            <div class="hero-inner">
+              <div class="topbar">
+                <div class="brand-pill">Sev1Bench · Incident response benchmark for OpenEnv evaluation</div>
+                <div class="status-pill"><span class="status-dot"></span> Live Hugging Face Space runtime</div>
               </div>
 
-              <div class="card">
-                <h2>Submission contract</h2>
-                <div class="metric"><span>Environment app</span><strong><code>server/app.py</code></strong></div>
-                <div class="metric"><span>Evaluation entrypoint</span><strong><code>inference.py</code></strong></div>
-                <div class="metric"><span>Space slug</span><strong><code>Krrishya/Sev1Bench</code></strong></div>
-                <div class="metric"><span>API docs</span><strong><code>/docs</code></strong></div>
-                <div class="metric"><span>Live tester route</span><strong><code>/ui/test-run</code></strong></div>
-              </div>
-            </div>
+              <div class="hero-main">
+                <div class="hero-copy">
+                  <div class="eyebrow">Phase 2 · Round 1 review surface</div>
+                  <h1>Sev1Bench</h1>
+                  <p class="lead">
+                    A clean, judge-friendly benchmark interface for validating whether an agent can investigate
+                    deterministic evidence, identify the real failing service, apply the right remediation, and
+                    communicate recovery truthfully under pressure.
+                  </p>
 
-            <div class="actions">
-              <div class="pill">read_logs</div>
-              <div class="pill">restart_service</div>
-              <div class="pill">scale_up</div>
-              <div class="pill">rollback</div>
-              <div class="pill">post_status_update</div>
-            </div>
-
-            <div class="section">
-              <div class="card">
-                <h2>Scenario matrix</h2>
-                <div class="metrics-grid">
-                  <div class="task-chip easy"><span>easy</span><strong>api-service · rollback</strong></div>
-                  <div class="task-chip medium"><span>medium</span><strong>auth-service · restart</strong></div>
-                  <div class="task-chip hard"><span>hard</span><strong>db-cluster · scale up</strong></div>
-                  <div class="task-chip"><span>Success condition</span><strong>health ≥ 0.99 + truthful update</strong></div>
-                </div>
-              </div>
-
-              <div class="card">
-                <h2>Reviewer workflow</h2>
-                <ul>
-                  <li>Inspect the live OpenEnv endpoints in <code>/docs</code>.</li>
-                  <li>Run a browser-side test below against the same runtime configuration.</li>
-                  <li>Confirm the response shows the model, proxy base URL, step logs, and final score.</li>
-                  <li>Verify the repo still uses the canonical programmatic evaluation flow.</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="callout-grid">
-              <div class="card">
-                <h2>Run a live Hugging Face test</h2>
-                <p>
-                  Launch a benchmark episode directly from the landing page and inspect a richer result surface with
-                  run status, execution metrics, rewards, request traces, and raw backend output in one place.
-                </p>
-
-                <div class="control-row" style="margin-top:14px;">
-                  <label for="task-select" class="small-note">Task</label>
-                  <select id="task-select">
-                    <option value="easy">easy</option>
-                    <option value="medium">medium</option>
-                    <option value="hard">hard</option>
-                  </select>
-                  <button id="run-test-btn" type="button">Run test on Hugging Face</button>
-                  <button id="clear-test-btn" class="secondary" type="button">Clear</button>
-                </div>
-
-                <div id="result-shell" class="result-shell hidden">
-                  <div id="result-banner" class="result-banner"></div>
-
-                  <div class="result-grid">
-                    <div class="result-stat"><span>Task</span><strong id="result-task">—</strong></div>
-                    <div class="result-stat"><span>Success</span><strong id="result-success">—</strong></div>
-                    <div class="result-stat"><span>Steps</span><strong id="result-steps">—</strong></div>
-                    <div class="result-stat"><span>Score</span><strong id="result-score">—</strong></div>
+                  <div class="priority-grid">
+                    <div class="feature-card">
+                      <div class="mini-label">Primary interaction</div>
+                      <h3>Run the benchmark instantly</h3>
+                      <p>The live task runner is the first-class experience so judges can validate behavior immediately.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Review flow</div>
+                      <h3>Inspect, run, verify</h3>
+                      <p>The interface is structured around the shortest path from curiosity to confidence.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Presentation quality</div>
+                      <h3>Premium light-mode design</h3>
+                      <p>Soft contrast, glass surfaces, and whitespace replace heavy cyber dashboard aesthetics.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Hackathon value</div>
+                      <h3>High trust, low friction</h3>
+                      <p>Core signals, execution traces, and benchmark context are visible without hunting through menus.</p>
+                    </div>
                   </div>
+                </div>
 
-                  <div class="two-col">
-                    <div class="panel-stack">
-                      <div class="card">
-                        <span class="eyebrow">Runtime values</span>
-                        <div class="metric"><span>Model</span><strong id="result-model">—</strong></div>
-                        <div class="metric"><span>API base URL</span><strong id="result-base-url">—</strong></div>
-                        <div class="metric"><span>Rewards</span><strong id="result-rewards">—</strong></div>
+                <div class="hero-panel">
+                  <div class="glass-card">
+                    <div class="section-title">Reviewer workflow</div>
+                    <div class="workflow-steps">
+                      <div class="workflow-step">
+                        <div class="step-index">01</div>
+                        <div class="step-copy">
+                          <strong>Choose a task</strong>
+                          <div class="small-copy">Start with easy, medium, or hard directly from the live runner.</div>
+                        </div>
                       </div>
-                      <div class="log-panel">
-                        <span class="eyebrow">LLM request logs</span>
-                        <pre id="result-llm-logs">No run yet.</pre>
+                      <div class="workflow-step">
+                        <div class="step-index">02</div>
+                        <div class="step-copy">
+                          <strong>Run the live episode</strong>
+                          <div class="small-copy">Trigger the benchmark and observe score, step count, and raw traces.</div>
+                        </div>
+                      </div>
+                      <div class="workflow-step">
+                        <div class="step-index">03</div>
+                        <div class="step-copy">
+                          <strong>Inspect the evidence</strong>
+                          <div class="small-copy">Review the runtime values, LLM lines, and backend response payload together.</div>
+                        </div>
+                      </div>
+                      <div class="workflow-step">
+                        <div class="step-index">04</div>
+                        <div class="step-copy">
+                          <strong>Validate the contract</strong>
+                          <div class="small-copy">Open API docs and confirm the deployment matches the benchmark entrypoint.</div>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div class="panel-stack">
-                      <div class="log-panel">
-                        <span class="eyebrow">Step logs</span>
-                        <pre id="result-step-logs">No run yet.</pre>
-                      </div>
-                      <div class="log-panel">
-                        <span class="eyebrow">Raw response</span>
-                        <pre id="result-json">No run yet.</pre>
-                      </div>
+                  <div class="glass-card">
+                    <div class="section-title">Submission contract</div>
+                    <div class="metric-list">
+                      <div class="metric-row"><span>Environment app</span><strong>server/app.py</strong></div>
+                      <div class="metric-row"><span>Evaluation entrypoint</span><strong>inference.py</strong></div>
+                      <div class="metric-row"><span>Scenario coverage</span><strong>easy · medium · hard</strong></div>
+                      <div class="metric-row"><span>Live tester route</span><strong>/ui/test-run</strong></div>
+                      <div class="metric-row"><span>API schema</span><strong>/docs</strong></div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="card">
-                <h2>What this interface does better</h2>
-                <ul>
-                  <li>Presents Sev1Bench like a polished product instead of a basic landing page.</li>
-                  <li>Lets reviewers trigger benchmark runs without leaving the Space homepage.</li>
-                  <li>Surfaces the most important outputs immediately: success, score, steps, rewards, and logs.</li>
-                  <li>Keeps the raw API contract available while making the visual review experience feel top tier.</li>
-                </ul>
+              <div class="signal-row" style="margin-top: 24px;">
+                <div class="signal-card">
+                  <div class="mini-label">Benchmark model</div>
+                  <span class="signal-value">Investigate → Fix → Communicate</span>
+                </div>
+                <div class="signal-card">
+                  <div class="mini-label">Space purpose</div>
+                  <span class="signal-value">Judge-facing benchmark presentation with live execution visibility</span>
+                </div>
+                <div class="signal-card">
+                  <div class="mini-label">Runtime posture</div>
+                  <span class="signal-value">Environment-configured evaluation backed by the deployed Space runtime</span>
+                </div>
+                <div class="signal-card">
+                  <div class="mini-label">Winning advantage</div>
+                  <span class="signal-value">Cleaner verification flow, stronger aesthetics, faster reviewer comprehension</span>
+                </div>
               </div>
-            </div>
 
-            <div class="footer">
-              <a class="link" href="https://github.com/krrishyaa/Sev1Bench" target="_blank" rel="noreferrer">Open GitHub Repo</a>
-              <a class="link secondary" href="/docs">Open API Docs</a>
-              <div class="meta-note">Built for OpenEnv incident-response evaluation on Hugging Face Spaces.</div>
+              <div class="runner-grid">
+                <div class="glass-card runner-shell">
+                  <div class="runner-hero">
+                    <div class="runner-title">
+                      <div>
+                        <div class="eyebrow">Judge focal point</div>
+                        <h2>Run a live Hugging Face test</h2>
+                      </div>
+                      <div class="runner-highlight">Fastest path to validation</div>
+                    </div>
+                    <p>
+                      Launch a benchmark episode from the homepage and review the exact execution surface judges care
+                      about: outcome, score, step trace, runtime values, and raw response details.
+                    </p>
+                  </div>
+
+                  <div class="detail-grid">
+                    <div class="scenario-card easy">
+                      <div class="mini-label">easy</div>
+                      <strong>api-service rollback</strong>
+                    </div>
+                    <div class="scenario-card medium">
+                      <div class="mini-label">medium</div>
+                      <strong>auth-service restart</strong>
+                    </div>
+                    <div class="scenario-card hard">
+                      <div class="mini-label">hard</div>
+                      <strong>db-cluster scale up</strong>
+                    </div>
+                    <div class="scenario-card signal">
+                      <div class="mini-label">success signal</div>
+                      <strong>Health restored + truthful status update</strong>
+                    </div>
+                  </div>
+
+                  <div class="control-bar">
+                    <span class="control-label">Task</span>
+                    <select id="task-select">
+                      <option value="easy">easy</option>
+                      <option value="medium">medium</option>
+                      <option value="hard">hard</option>
+                    </select>
+                    <button id="run-test-btn" class="primary" type="button">Run live benchmark</button>
+                    <button id="clear-test-btn" class="secondary" type="button">Clear results</button>
+                  </div>
+
+                  <div id="result-shell" class="result-shell hidden">
+                    <div id="result-banner" class="result-banner"></div>
+
+                    <div class="result-grid">
+                      <div class="result-card">
+                        <div class="stat-label">Task</div>
+                        <span id="result-task" class="stat-value">—</span>
+                      </div>
+                      <div class="result-card">
+                        <div class="stat-label">Success</div>
+                        <span id="result-success" class="stat-value">—</span>
+                      </div>
+                      <div class="result-card">
+                        <div class="stat-label">Steps</div>
+                        <span id="result-steps" class="stat-value">—</span>
+                      </div>
+                      <div class="result-card">
+                        <div class="stat-label">Score</div>
+                        <span id="result-score" class="stat-value">—</span>
+                      </div>
+                    </div>
+
+                    <div class="runner-grid" style="margin-top: 0;">
+                      <div class="log-stack">
+                        <div class="info-panel">
+                          <div class="section-title">Runtime values</div>
+                          <div class="info-grid">
+                            <div class="info-row"><span>Model</span><strong id="result-model">—</strong></div>
+                            <div class="info-row"><span>API base URL</span><strong id="result-base-url">—</strong></div>
+                            <div class="info-row"><span>Rewards</span><strong id="result-rewards">—</strong></div>
+                          </div>
+                        </div>
+                        <div class="log-card">
+                          <div class="panel-label">LLM request logs</div>
+                          <pre id="result-llm-logs">No run yet.</pre>
+                        </div>
+                      </div>
+
+                      <div class="log-stack">
+                        <div class="log-card">
+                          <div class="panel-label">Step logs</div>
+                          <pre id="result-step-logs">No run yet.</pre>
+                        </div>
+                        <div class="log-card">
+                          <div class="panel-label">Raw response</div>
+                          <pre id="result-json">No run yet.</pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="glass-card workflow-card">
+                  <div class="eyebrow">Why this presentation is stronger</div>
+                  <div class="insight-grid">
+                    <div class="feature-card">
+                      <div class="mini-label">Clarity</div>
+                      <h3>Judges see the action first</h3>
+                      <p>The live run trigger is elevated above supporting information instead of buried inside the page.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Flow</div>
+                      <h3>Evidence follows the run</h3>
+                      <p>Outcome, score, traces, and raw payload appear in a single visual flow after execution.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Aesthetic</div>
+                      <h3>Light, modern, premium</h3>
+                      <p>Soft glass cards and breathable spacing make the benchmark feel considered and competition-ready.</p>
+                    </div>
+                    <div class="feature-card">
+                      <div class="mini-label">Strategy</div>
+                      <h3>Lower reviewer effort</h3>
+                      <p>Every key proof point is visible where the judge needs it, reducing cognitive overhead.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="footer-row">
+                <a class="link" href="https://github.com/krrishyaa/Sev1Bench" target="_blank" rel="noreferrer">Open GitHub Repo</a>
+                <a class="link secondary" href="/docs">Open API Docs</a>
+                <div class="footer-note">Elegant benchmark presentation for Meta × Hugging Face review.</div>
+              </div>
             </div>
           </section>
         </main>
@@ -713,8 +1014,8 @@ def landing_page() -> str:
 
               resultBanner.className = `result-banner ${data.success ? "ok" : "fail"}`;
               resultBanner.textContent = data.success
-                ? "Run completed successfully through the configured runtime."
-                : "Run completed but did not fully resolve the incident.";
+                ? "Benchmark run completed successfully."
+                : "Benchmark run completed but the incident was not fully resolved.";
               fields.task.textContent = data.task_id;
               fields.success.textContent = String(data.success);
               fields.steps.textContent = String(data.steps);
