@@ -62,47 +62,47 @@ TASKS: Dict[str, Dict[str, Any]] = {
 LOG_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
     "easy": {
         "api-service": [
-            "2026-04-08T09:00:00Z level=ERROR service=api-service request_id=req-7f31c2 route=/checkout latency_ms=4821 msg="Config mismatch after deploy"",
-            "2026-04-08T09:00:01Z level=ERROR service=api-service request_id=req-7f31c3 exception=ConfigError msg="PAYMENTS_BACKEND_URL points to invalid canary target"",
-            "2026-04-08T09:00:02Z level=TRACE service=api-service trace_id=trc-a91b span=rollback-check stack="ConfigError: invalid upstream\\n  at load_runtime_config(app/config.py:184)\\n  at bootstrap(app/main.py:61)"",
+            '2026-04-08T09:00:00Z level=ERROR service=api-service request_id=req-7f31c2 route=/checkout latency_ms=4821 msg="Config mismatch after deploy"',
+            '2026-04-08T09:00:01Z level=ERROR service=api-service request_id=req-7f31c3 exception=ConfigError msg="PAYMENTS_BACKEND_URL points to invalid canary target"',
+            '2026-04-08T09:00:02Z level=TRACE service=api-service trace_id=trc-a91b span=rollback-check stack="ConfigError: invalid upstream\\n  at load_runtime_config(app/config.py:184)\\n  at bootstrap(app/main.py:61)"',
         ],
         "cache": [
-            "2026-04-08T09:00:00Z level=WARN service=cache request_id=req-c8112 msg="Cache miss rate elevated from slow upstream responses"",
-            "2026-04-08T09:00:02Z level=INFO service=cache trace_id=trc-c119 dependency=api-service msg="backend timeouts propagating to cache warm path"",
+            '2026-04-08T09:00:00Z level=WARN service=cache request_id=req-c8112 msg="Cache miss rate elevated from slow upstream responses"',
+            '2026-04-08T09:00:02Z level=INFO service=cache trace_id=trc-c119 dependency=api-service msg="backend timeouts propagating to cache warm path"',
         ],
         "worker": [
-            "2026-04-08T09:00:01Z level=WARN service=worker request_id=req-w2011 queue=checkout-jobs msg="job retry count rising due to api-service 5xx responses"",
-            "2026-04-08T09:00:03Z level=INFO service=worker trace_id=trc-w201 dependency=api-service msg="downstream saturation detected, worker itself healthy"",
+            '2026-04-08T09:00:01Z level=WARN service=worker request_id=req-w2011 queue=checkout-jobs msg="job retry count rising due to api-service 5xx responses"',
+            '2026-04-08T09:00:03Z level=INFO service=worker trace_id=trc-w201 dependency=api-service msg="downstream saturation detected, worker itself healthy"',
         ],
     },
     "medium": {
         "auth-service": [
-            "2026-04-08T09:10:00Z level=ERROR service=auth-service request_id=req-a1102 route=/token msg="JWT signer initialization failed after hot reload"",
-            "2026-04-08T09:10:01Z level=ERROR service=auth-service request_id=req-a1103 exception=SignerUnavailable msg="active signing key handle missing from process memory"",
-            "2026-04-08T09:10:03Z level=TRACE service=auth-service trace_id=trc-a77 stack="SignerUnavailable: signer handle missing\\n  at signer.load(runtime/keys.py:57)\\n  at issue_token(auth/service.py:212)"",
+            '2026-04-08T09:10:00Z level=ERROR service=auth-service request_id=req-a1102 route=/token msg="JWT signer initialization failed after hot reload"',
+            '2026-04-08T09:10:01Z level=ERROR service=auth-service request_id=req-a1103 exception=SignerUnavailable msg="active signing key handle missing from process memory"',
+            '2026-04-08T09:10:03Z level=TRACE service=auth-service trace_id=trc-a77 stack="SignerUnavailable: signer handle missing\\n  at signer.load(runtime/keys.py:57)\\n  at issue_token(auth/service.py:212)"',
         ],
         "gateway": [
-            "2026-04-08T09:10:00Z level=WARN service=gateway request_id=req-g2201 route=/login status=401 msg="upstream auth-service rejected session token"",
-            "2026-04-08T09:10:02Z level=INFO service=gateway trace_id=trc-g220 dependency=auth-service msg="symptom observed at edge, root cause likely upstream auth"",
+            '2026-04-08T09:10:00Z level=WARN service=gateway request_id=req-g2201 route=/login status=401 msg="upstream auth-service rejected session token"',
+            '2026-04-08T09:10:02Z level=INFO service=gateway trace_id=trc-g220 dependency=auth-service msg="symptom observed at edge, root cause likely upstream auth"',
         ],
         "user-service": [
-            "2026-04-08T09:10:01Z level=WARN service=user-service request_id=req-u0191 msg="retry storm from gateway due to failed identity lookups"",
-            "2026-04-08T09:10:04Z level=INFO service=user-service trace_id=trc-u019 dependency=auth-service msg="local service healthy, waiting on auth restoration"",
+            '2026-04-08T09:10:01Z level=WARN service=user-service request_id=req-u0191 msg="retry storm from gateway due to failed identity lookups"',
+            '2026-04-08T09:10:04Z level=INFO service=user-service trace_id=trc-u019 dependency=auth-service msg="local service healthy, waiting on auth restoration"',
         ],
     },
     "hard": {
         "db-cluster": [
-            "2026-04-08T09:20:00Z level=ERROR service=db-cluster request_id=req-d9911 shard=payments-primary msg="write quorum unavailable: replication lag exceeded 12.4s"",
-            "2026-04-08T09:20:01Z level=ERROR service=db-cluster request_id=req-d9912 exception=ReplicationTimeout msg="commit path blocked on overloaded replicas"",
-            "2026-04-08T09:20:03Z level=TRACE service=db-cluster trace_id=trc-d991 stack="ReplicationTimeout: quorum write blocked\\n  at commit(txn/replication.py:311)\\n  at persist(payment/store.py:88)"",
+            '2026-04-08T09:20:00Z level=ERROR service=db-cluster request_id=req-d9911 shard=payments-primary msg="write quorum unavailable: replication lag exceeded 12.4s"',
+            '2026-04-08T09:20:01Z level=ERROR service=db-cluster request_id=req-d9912 exception=ReplicationTimeout msg="commit path blocked on overloaded replicas"',
+            '2026-04-08T09:20:03Z level=TRACE service=db-cluster trace_id=trc-d991 stack="ReplicationTimeout: quorum write blocked\\n  at commit(txn/replication.py:311)\\n  at persist(payment/store.py:88)"',
         ],
         "frontend": [
-            "2026-04-08T09:20:00Z level=WARN service=frontend request_id=req-f4402 page=/status msg="status widgets stale because payment-api health endpoint timed out"",
-            "2026-04-08T09:20:02Z level=INFO service=frontend trace_id=trc-f440 dependency=db-cluster msg="frontend healthy, degraded by upstream persistence path"",
+            '2026-04-08T09:20:00Z level=WARN service=frontend request_id=req-f4402 page=/status msg="status widgets stale because payment-api health endpoint timed out"',
+            '2026-04-08T09:20:02Z level=INFO service=frontend trace_id=trc-f440 dependency=db-cluster msg="frontend healthy, degraded by upstream persistence path"',
         ],
         "batch-worker": [
-            "2026-04-08T09:20:01Z level=WARN service=batch-worker request_id=req-b5509 queue=settlements msg="consumer lag rising due to slow db commit acknowledgements"",
-            "2026-04-08T09:20:03Z level=INFO service=batch-worker trace_id=trc-b550 dependency=db-cluster msg="worker drain constrained by database replication lag"",
+            '2026-04-08T09:20:01Z level=WARN service=batch-worker request_id=req-b5509 queue=settlements msg="consumer lag rising due to slow db commit acknowledgements"',
+            '2026-04-08T09:20:03Z level=INFO service=batch-worker trace_id=trc-b550 dependency=db-cluster msg="worker drain constrained by database replication lag"',
         ],
     },
 }
@@ -338,7 +338,7 @@ class IncidentResponseEnvironment(Environment):
         base_time = datetime(2026, 4, 8, 9, 0, 0) + timedelta(minutes=self._state.step_count)
         timestamp = base_time.isoformat() + "Z"
         return [
-            f"{timestamp} level=INFO service={target} request_id=req-generic-{self._state.step_count:04d} msg="service nominal; no direct evidence of root cause""
+            f'{timestamp} level=INFO service={target} request_id=req-generic-{self._state.step_count:04d} msg="service nominal; no direct evidence of root cause"'
         ]
 
     def _is_truthful_status(self, message: str, recovered: bool) -> bool:
