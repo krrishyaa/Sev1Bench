@@ -2,6 +2,7 @@ id: medium
 title: Auth service degradation with noisy downstream failures
 difficulty: medium
 description: Investigate intermittent login and request failures across the platform. Multiple downstream symptoms are visible, including gateway 401s, user-service retry storms, and noisy authentication errors, but auth-service is the true root cause. The agent must look past the misleading symptom surface, identify auth-service as the real fault domain, restart the affected service, communicate truthfully, and restore platform health.
+grader: graders/medium_grader.py
 initial_conditions:
   root_cause_service: auth-service
   initial_health: 0.40

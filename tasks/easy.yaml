@@ -2,6 +2,7 @@ id: easy
 title: API service out-of-memory incident
 difficulty: easy
 description: Investigate a straightforward checkout outage caused by a single failing service. The api-service is the true root cause, the logs are direct, and the correct operator response is to identify the failure quickly, apply rollback, communicate truthfully, and restore service health.
+grader: graders/easy_grader.py
 initial_conditions:
   root_cause_service: api-service
   initial_health: 0.55
