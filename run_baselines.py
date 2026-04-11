@@ -20,7 +20,7 @@ from server.environment import IncidentResponseEnvironment
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest"
 DEFAULT_EPISODES = 3
-TASK_IDS = ("easy", "medium", "hard")
+TASK_IDS = ("easy", "medium", "hard", "expert")
 
 
 @dataclass
@@ -80,6 +80,7 @@ def _infer_correct_fix(task_id: str) -> str:
         "easy": "rollback",
         "medium": "restart_service",
         "hard": "scale_up",
+        "expert": "restart_service",
     }
     return mapping.get(task_id, "rollback")
 

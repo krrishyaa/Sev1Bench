@@ -1,0 +1,19 @@
+id: expert
+title: Queue broker coordination failure during fulfillment event processing
+difficulty: expert
+description: Investigate a multi-service fulfillment incident where order-orchestrator and notification-service appear degraded, but the queue-broker leader is the true root cause. The correct operator response is to inspect logs, isolate the message transport failure, restart the queue broker leader, communicate truthfully while recovery is in progress, and restore end-to-end event delivery.
+grader: graders/expert_grader.py
+grader_fn: grade
+active: true
+initial_conditions:
+  root_cause_service: queue-broker
+  initial_health: 0.34
+  correct_fix: restart_service
+success_criteria:
+  - root_cause_found == true
+  - correct_fix_applied == true
+  - truthful_status_posted == true
+  - resolved == true
+reward_range:
+  min: 0.0
+  max: 1.0

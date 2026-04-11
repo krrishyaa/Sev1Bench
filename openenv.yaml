@@ -1,5 +1,5 @@
 name: sev1bench
-description: OpenEnv incident-response environment with three deterministic tasks and typed action/observation contracts.
+description: OpenEnv incident-response environment with four deterministic tasks and typed action-observation contracts.
 entrypoint: server.app:app
 inference_entrypoint: inference.py
 runtime:
@@ -42,6 +42,13 @@ tasks:
     difficulty: hard
     description: Diagnose db-cluster replication incident and recover via scale_up.
     grader: graders/hard_grader.py
+    grader_fn: grade
+    active: true
+  - id: expert
+    title: Queue broker coordination failure during fulfillment event processing
+    difficulty: expert
+    description: Diagnose queue-broker coordination loss and recover via restart_service.
+    grader: graders/expert_grader.py
     grader_fn: grade
     active: true
 

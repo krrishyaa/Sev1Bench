@@ -6,15 +6,20 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from graders import GRADER_REGISTRY
 from models import IncidentAction
 from server.environment import IncidentResponseEnvironment
 
 
 ROOT = Path(__file__).resolve().parent
-TASK_IDS = ["easy", "medium", "hard"]
+TASK_IDS = ["easy", "medium", "hard", "expert"]
 
 
-def load_grade_function(path: Path) -> Callable[[Any], dict[str, Any]]:
+def load_grade_function(task_id: str, path: Path) -> Callable[[Any], dict[str, Any]]:
+    grade = GRADER_REGISTRY.get(task_id)
+    if callable(grade):
+        return grade
+
     spec = importlib.util.spec_from_file_location(path.stem, path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load grader module: {path}")
@@ -34,6 +39,7 @@ def run_task(task_id: str) -> dict[str, Any]:
         "easy": "rollback",
         "medium": "restart_service",
         "hard": "scale_up",
+        "expert": "restart_service",
     }
 
     candidate_services = observation.metadata.get("candidate_services", [])
@@ -82,7 +88,7 @@ def run_task(task_id: str) -> dict[str, Any]:
         )
 
     grader_path = ROOT / "graders" / f"{task_id}_grader.py"
-    grade = load_grade_function(grader_path)
+    grade = load_grade_function(task_id, grader_path)
     graded = grade(final_observation)
 
     reward = float(graded.get("reward", 0.0))
@@ -117,9 +123,12 @@ def main() -> int:
         ROOT / "tasks" / "easy.yaml",
         ROOT / "tasks" / "medium.yaml",
         ROOT / "tasks" / "hard.yaml",
+        ROOT / "tasks" / "expert.yaml",
         ROOT / "graders" / "easy_grader.py",
         ROOT / "graders" / "medium_grader.py",
         ROOT / "graders" / "hard_grader.py",
+        ROOT / "graders" / "expert_grader.py",
+        ROOT / "graders" / "__init__.py",
     ]
 
     missing = [str(path.relative_to(ROOT)) for path in required_files if not path.exists()]

@@ -22,6 +22,7 @@ MODEL_NAME = os.getenv("MODEL_NAME")
 TASK_NAME = os.getenv("TASK_ID", "easy")
 BENCHMARK = "sev1bench"
 DEFAULT_MODEL_NAME = "openai/gpt-4o-mini"
+SUPPORTED_TASK_IDS = ("easy", "medium", "hard", "expert")
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -169,6 +170,7 @@ def _deterministic_policy_action(observation: Any) -> dict[str, Any] | None:
         "easy": "rollback",
         "medium": "restart_service",
         "hard": "scale_up",
+        "expert": "restart_service",
     }
 
     if not observation.root_cause_found:

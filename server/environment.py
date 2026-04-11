@@ -57,6 +57,22 @@ TASKS: Dict[str, Dict[str, Any]] = {
         "recovery_note": "capacity expansion is required before the write quorum can recover",
         "users_base": 260,
     },
+    "expert": {
+        "root_cause_service": "queue-broker",
+        "initial_health": 0.34,
+        "alerts": [
+            "critical: queue-broker consumer lag breaching incident threshold for order fulfillment",
+            "critical: order-orchestrator timeouts increasing as enqueue acknowledgements stall",
+            "warning: notification-service backlog growing because event fanout is blocked",
+            "warning: support-dashboard showing delayed shipment state transitions",
+        ],
+        "correct_fix": "restart_service",
+        "wrong_targets": ["order-orchestrator", "notification-service"],
+        "impact_summary": "order fulfillment events are not draining, causing shipping confirmations and customer notifications to stall",
+        "investigation_hint": "several downstream services appear unhealthy, but the message transport layer is the actual fault domain",
+        "recovery_note": "restarting the queue broker leader should restore consumer group coordination and resume event delivery",
+        "users_base": 320,
+    },
 }
 
 LOG_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
@@ -103,6 +119,21 @@ LOG_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
         "batch-worker": [
             '2026-04-08T09:20:01Z level=WARN service=batch-worker request_id=req-b5509 queue=settlements msg="consumer lag rising due to slow db commit acknowledgements"',
             '2026-04-08T09:20:03Z level=INFO service=batch-worker trace_id=trc-b550 dependency=db-cluster msg="worker drain constrained by database replication lag"',
+        ],
+    },
+    "expert": {
+        "queue-broker": [
+            '2026-04-08T09:30:00Z level=ERROR service=queue-broker request_id=req-q4411 partition=orders msg="leader heartbeat expired; consumer group coordination halted"',
+            '2026-04-08T09:30:01Z level=ERROR service=queue-broker request_id=req-q4412 exception=BrokerCoordinatorLost msg="broker metadata cache stale after failover; acknowledgements no longer draining"',
+            '2026-04-08T09:30:03Z level=TRACE service=queue-broker trace_id=trc-q441 stack="BrokerCoordinatorLost: event delivery stalled\\n  at coordinator.refresh(messaging/cluster.py:214)\\n  at ack(event/dispatcher.py:119)"',
+        ],
+        "order-orchestrator": [
+            '2026-04-08T09:30:00Z level=WARN service=order-orchestrator request_id=req-o3310 workflow=ship-order msg="enqueue acknowledgement timed out waiting on queue-broker"',
+            '2026-04-08T09:30:02Z level=INFO service=order-orchestrator trace_id=trc-o331 dependency=queue-broker msg="orchestrator backlog is symptomatic of upstream transport unavailability"',
+        ],
+        "notification-service": [
+            '2026-04-08T09:30:01Z level=WARN service=notification-service request_id=req-n1182 channel=email msg="event fanout delayed because queue offsets stopped advancing"',
+            '2026-04-08T09:30:03Z level=INFO service=notification-service trace_id=trc-n118 dependency=queue-broker msg="notification workers healthy but blocked on broker recovery"',
         ],
     },
 }
