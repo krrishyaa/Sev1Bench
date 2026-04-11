@@ -542,6 +542,45 @@ def landing_page() -> str:
         padding: 16px;
       }
 
+      .kpi-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .kpi-icon {
+        width: 36px;
+        height: 36px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #0f1423;
+        font-size: 15px;
+      }
+
+      .kpi-delta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .kpi-delta.positive {
+        color: var(--success);
+      }
+
+      .kpi-delta.warn {
+        color: var(--warn);
+      }
+
+      .kpi-delta.negative {
+        color: #fda4af;
+      }
+
       .kpi-value {
         display: flex;
         align-items: baseline;
@@ -568,6 +607,10 @@ def landing_page() -> str:
 
       .tone-warn strong {
         color: var(--warn);
+      }
+
+      .tone-danger strong {
+        color: #fda4af;
       }
 
       .chart-card {
@@ -975,7 +1018,8 @@ def landing_page() -> str:
             <div class="body-copy">
               The benchmark is structured so judges can inspect environment realism and grading visibility without
               ambiguity. Task declarations, graders, environment transitions, remediation contracts, and runtime
-              telemetry are all surfaced through one cohesive operations shell.
+              telemetry are all surfaced through one cohesive operations shell. The operational guidance below is
+              intentional product framing rather than claiming live self-updating analytics from the backend.
             </div>
             <div class="posture-grid">
               <div class="posture-card execution-card">
@@ -1008,50 +1052,62 @@ def landing_page() -> str:
 
             <div class="live-metrics-grid">
               <div class="kpi">
-                <div class="metric-label">Overall Success Rate</div>
-                <div class="kpi-value tone-success"><strong>84.2%</strong><span>stable</span></div>
-                <div class="body-copy">High-confidence task completion across declared benchmark tiers.</div>
+                <div class="kpi-top">
+                  <div class="metric-label">Success Rate</div>
+                  <div class="kpi-icon">↗</div>
+                </div>
+                <div class="kpi-value tone-success"><strong>84.2%</strong></div>
+                <div class="kpi-delta positive">▲ 2.4%</div>
+                <div class="body-copy">Benchmark-facing presentation metric for declared benchmark tiers.</div>
               </div>
               <div class="kpi">
-                <div class="metric-label">Average MTTR</div>
-                <div class="kpi-value tone-warn"><strong>4m 12s</strong><span>amber</span></div>
-                <div class="body-copy">Mean time to restore compressed with deterministic remediation routing.</div>
+                <div class="kpi-top">
+                  <div class="metric-label">Avg MTTR</div>
+                  <div class="kpi-icon">⏱</div>
+                </div>
+                <div class="kpi-value tone-warn"><strong>4m 12s</strong></div>
+                <div class="kpi-delta warn">14s</div>
+                <div class="body-copy">Presentation metric showing recovery-time posture in the operator surface.</div>
               </div>
               <div class="kpi">
-                <div class="metric-label">Remediation Accuracy</div>
-                <div class="kpi-value tone-success"><strong>92.5%</strong><span>green</span></div>
-                <div class="body-copy">Corrective actions converge on the faulted service with high precision.</div>
+                <div class="kpi-top">
+                  <div class="metric-label">Accuracy</div>
+                  <div class="kpi-icon">◎</div>
+                </div>
+                <div class="kpi-value tone-success"><strong>92.5%</strong></div>
+                <div class="kpi-delta positive">▲ 1.1%</div>
+                <div class="body-copy">Presentation metric for remediation precision and target correctness.</div>
               </div>
             </div>
 
             <div class="metric-row">
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Active graders</div>
-                  <div class="tiny-pill">04</div>
+                  <div class="metric-label">Loss</div>
+                  <div class="tiny-pill">display</div>
                 </div>
-                <div class="metric-value">4</div>
+                <div class="metric-value tone-danger"><strong>3.12</strong></div>
               </div>
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Execution traces</div>
-                  <div class="tiny-pill">live</div>
-                </div>
-                <div class="metric-value">9.2k</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-head">
-                  <div class="metric-label">Scenario breadth</div>
-                  <div class="tiny-pill">sev-aware</div>
-                </div>
-                <div class="metric-value">4 tiers</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-head">
-                  <div class="metric-label">Mean score</div>
-                  <div class="tiny-pill">local</div>
+                  <div class="metric-label">Current local mean score</div>
+                  <div class="tiny-pill">measured</div>
                 </div>
                 <div class="metric-value score-strong">0.997</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-head">
+                  <div class="metric-label">Measured task pass count</div>
+                  <div class="tiny-pill">local</div>
+                </div>
+                <div class="metric-value">4 / 4</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-head">
+                  <div class="metric-label">UI note</div>
+                  <div class="tiny-pill">important</div>
+                </div>
+                <div class="metric-value" style="font-size: 16px;">Hero KPIs are presentation values</div>
               </div>
             </div>
 
@@ -1217,6 +1273,38 @@ def landing_page() -> str:
               </div>
             </div>
           </section>
+
+          <section class="panel section-panel">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">Round 1 improvement brief</div>
+                <div class="section-title small">Reality check and next steps</div>
+              </div>
+            </div>
+
+            <div class="doctrine-list">
+              <div class="doctrine-card">
+                <div class="doctrine-step">Priority 01</div>
+                <div><strong>Optimize for hidden test robustness</strong></div>
+                <div class="doctrine-copy">Make task handling less brittle, keep fallbacks safe when metadata is partial, and avoid depending on narrow visible-task assumptions.</div>
+              </div>
+              <div class="doctrine-card">
+                <div class="doctrine-step">Priority 02</div>
+                <div><strong>Reduce visible scoring leaks</strong></div>
+                <div class="doctrine-copy"><span class="code-tag">easy</span> still shows a small efficiency leak and <span class="code-tag">expert</span> still shows a small impact-containment leak; tighten sequencing and earlier mitigation.</div>
+              </div>
+              <div class="doctrine-card">
+                <div class="doctrine-step">Priority 03</div>
+                <div><strong>Favor deterministic reliability over pure LLM dependence</strong></div>
+                <div class="doctrine-copy">Hybrid or deterministic flows are often stronger in CI because they reduce failure modes and improve reproducibility under hidden evaluation.</div>
+              </div>
+              <div class="doctrine-card">
+                <div class="doctrine-step">Priority 04</div>
+                <div><strong>Tighten presentation and judge confidence</strong></div>
+                <div class="doctrine-copy">Polish <span class="code-tag">README.md</span>, remove dead code or confusing artifacts, and keep logs and narrative crisp enough for reviewers to trust immediately.</div>
+              </div>
+            </div>
+          </section>
         </aside>
       </section>
 
@@ -1272,11 +1360,11 @@ def landing_page() -> str:
         fields.summary.textContent = "No run yet.";
         fields.json.textContent = "No run yet.";
         fields.streams.textContent = "No run yet.";
-        terminalFeed.innerHTML = '<span class="log-info">[INFO]</span> agent boot completed; validation workspace mounted\\n' +
-          '<span class="log-action">[ACTION]</span> read_logs target=api-service to isolate primary fault domain\\n' +
-          '<span class="log-info">[INFO]</span> runtime contract verified: four tasks, four graders, deterministic rewards\\n' +
-          '<span class="log-warn">[WARN]</span> unresolved backlog can degrade expert-tier containment if remediation is delayed\\n' +
-          '<span class="log-score">[SCORE]</span> local validation mean reward = 0.9972<span class="cursor">_</span>';
+        terminalFeed.innerHTML = '<span class="log-info">[INFO]</span> operations console initialized; visual metrics include display-only presentation values\\n' +
+          '<span class="log-action">[ACTION]</span> measured benchmark facts remain available through task runs and runtime traces\\n' +
+          '<span class="log-info">[INFO]</span> local validation measured mean score = 0.9972 across 4 of 4 passing tasks\\n' +
+          '<span class="log-warn">[WARN]</span> do not treat hero KPIs as live backend counters unless wired to a measured endpoint\\n' +
+          '<span class="log-score">[SCORE]</span> focus improvements on hidden-test robustness and expert-tier containment<span class="cursor">_</span>';
       }
 
       function renderTelemetry(data, task) {
