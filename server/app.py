@@ -954,7 +954,7 @@ def landing_page() -> str:
           <div class="hf-left">
             <div class="hf-breadcrumb">Spaces &nbsp;/&nbsp; Krrishya &nbsp;/&nbsp; Sev1Bench</div>
             <div class="repo-chip">Krrishya / Sev1Bench</div>
-            <div class="running-badge"><span class="running-dot"></span>Running</div>
+            <div class="running-badge"><span class="running-dot"></span>UI loaded</div>
           </div>
           <div class="hf-right">
             <nav class="hf-tabs" aria-label="Navigation">
@@ -979,7 +979,7 @@ def landing_page() -> str:
           </div>
           <div class="hero-side">
             <div class="hero-badges">
-              <div class="hero-badge"><span class="hero-dot"></span>Runtime available</div>
+              <div class="hero-badge"><span class="hero-dot"></span>Run interface ready</div>
               <div class="hero-badge">Task count&nbsp; 04</div>
               <div class="hero-badge">Stack&nbsp; FastAPI + OpenEnv</div>
             </div>
@@ -1006,16 +1006,15 @@ def landing_page() -> str:
           <section class="panel section-panel benchmark-posture">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Benchmark posture</div>
-                <div class="section-title">Validator-oriented execution model with explicit task, runtime, and recovery scoring</div>
+                <div class="section-kicker">Benchmark structure</div>
+                <div class="section-title">Repository-defined tasks, graders, and run outputs</div>
               </div>
-              <div class="tiny-pill">Reward Range 0.0 → 1.0</div>
+              <div class="tiny-pill">Reward range 0.0 → 1.0</div>
             </div>
             <div class="body-copy">
-              The benchmark is structured so judges can inspect environment realism and grading visibility without
-              ambiguity. Task declarations, graders, environment transitions, remediation contracts, and runtime
-              telemetry are all surfaced through one cohesive operations shell. The operational guidance below is
-              intentional product framing rather than claiming live self-updating analytics from the backend.
+              This page summarizes repository-defined tasks, graders, execution outputs, and review notes.
+              It is intended to help reviewers inspect task metadata and read run results without treating static UI
+              text as measured backend telemetry.
             </div>
             <div class="posture-grid">
               <div class="posture-card execution-card">
@@ -1086,10 +1085,10 @@ def landing_page() -> str:
               </div>
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Supported actions</div>
-                  <div class="tiny-pill">verified</div>
+                  <div class="metric-label">Action types</div>
+                  <div class="tiny-pill">repository</div>
                 </div>
-                <div class="metric-value score-strong">5</div>
+                <div class="metric-value" style="font-size: 16px;">read_logs, rollback, restart_service, scale_up, update_status</div>
               </div>
               <div class="metric-card">
                 <div class="metric-head">
@@ -1138,11 +1137,11 @@ def landing_page() -> str:
                 <div class="terminal-title">Live Agent Telemetry</div>
               </div>
               <div class="terminal-body">
-                <pre id="terminal-feed" class="terminal-feed"><span class="log-info">[INFO]</span> agent boot completed; validation workspace mounted
-<span class="log-action">[ACTION]</span> read_logs target=api-service to isolate primary fault domain
-<span class="log-info">[INFO]</span> runtime contract verified: four tasks, four graders, deterministic rewards
-<span class="log-warn">[WARN]</span> unresolved backlog can degrade expert-tier containment if remediation is delayed
-<span class="log-score">[SCORE]</span> local validation mean reward = 0.9972<span class="cursor">_</span></pre>
+                <pre id="terminal-feed" class="terminal-feed"><span class="log-info">[INFO]</span> benchmark UI loaded for repository review
+<span class="log-action">[ACTION]</span> select a task and execute a run to collect measured output
+<span class="log-info">[INFO]</span> task metadata, logs, score, and raw JSON are shown after execution
+<span class="log-warn">[WARN]</span> static page labels are descriptive and should not be treated as measured results
+<span class="log-score">[SCORE]</span> no benchmark score is displayed until a run completes<span class="cursor">_</span></pre>
               </div>
             </section>
 
@@ -1305,8 +1304,8 @@ def landing_page() -> str:
       </section>
 
       <section class="panel">
-        <div class="footer-row">
-          <div class="body-copy">Deep-brand review surface for benchmark judges, developer advocates, and incident-response platform engineers.</div>
+      <div class="footer-row">
+          <div class="body-copy">Repository UI for benchmark review, task inspection, and run-output validation.</div>
           <div class="footer-links">
             <a class="btn" href="/ui/overview">JSON Overview</a>
             <a class="btn" href="/docs">API Schema</a>
@@ -1356,11 +1355,11 @@ def landing_page() -> str:
         fields.summary.textContent = "No run yet.";
         fields.json.textContent = "No run yet.";
         fields.streams.textContent = "No run yet.";
-        terminalFeed.innerHTML = '<span class="log-info">[INFO]</span> operations console initialized; visual metrics include display-only presentation values\\n' +
-          '<span class="log-action">[ACTION]</span> measured benchmark facts remain available through task runs and runtime traces\\n' +
-          '<span class="log-info">[INFO]</span> local validation measured mean score = 0.9972 across 4 of 4 passing tasks\\n' +
-          '<span class="log-warn">[WARN]</span> do not treat hero KPIs as live backend counters unless wired to a measured endpoint\\n' +
-          '<span class="log-score">[SCORE]</span> focus improvements on hidden-test robustness and expert-tier containment<span class="cursor">_</span>';
+        terminalFeed.innerHTML = '<span class="log-info">[INFO]</span> operations console initialized for benchmark review\\n' +
+          '<span class="log-action">[ACTION]</span> select a task and run it to collect measured output\\n' +
+          '<span class="log-info">[INFO]</span> logs, score, steps, and raw JSON will appear after execution\\n' +
+          '<span class="log-warn">[WARN]</span> static labels on this page should not be treated as live benchmark measurements\\n' +
+          '<span class="log-score">[SCORE]</span> no measured score is shown until a benchmark run completes<span class="cursor">_</span>';
       }
 
       function renderTelemetry(data, task) {
@@ -1461,7 +1460,7 @@ def landing_page() -> str:
 
       Highcharts.chart("benchmark-chart", {
         chart: {
-          type: "areaspline",
+          type: "line",
           backgroundColor: "transparent",
           spacing: [12, 8, 8, 8],
         },
@@ -1469,7 +1468,7 @@ def landing_page() -> str:
         credits: { enabled: false },
         legend: { enabled: false },
         xAxis: {
-          categories: ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+          categories: ["Select", "Run", "Inspect", "Validate"],
           lineColor: "#223146",
           tickColor: "#223146",
           labels: {
@@ -1483,40 +1482,34 @@ def landing_page() -> str:
         yAxis: {
           title: { text: null },
           labels: { enabled: false },
-          gridLineWidth: 0
+          gridLineWidth: 0,
+          min: 0,
+          max: 3
         },
         tooltip: {
           backgroundColor: "#111827",
           borderColor: "#2a3441",
           style: { color: "#e5e7eb" },
           shared: true,
-          valueSuffix: "%"
+          pointFormat: "{point.description}"
         },
         plotOptions: {
           series: {
-            animation: { duration: 900 },
-            marker: { enabled: false },
-            lineWidth: 3,
-            shadow: {
-              color: "rgba(59,130,246,0.45)",
-              width: 18
-            }
-          },
-          areaspline: {
-            fillColor: {
-              linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
-              stops: [
-                [0, "rgba(59,130,246,0.30)"],
-                [1, "rgba(59,130,246,0.00)"]
-              ]
-            }
+            animation: { duration: 0 },
+            marker: { enabled: true, radius: 4 },
+            lineWidth: 2
           }
         },
         series: [
           {
-            name: "Benchmark posture",
+            name: "Review workflow",
             color: "#3b82f6",
-            data: [58, 63, 61, 72, 70, 81, 84.2]
+            data: [
+              { y: 0, description: "Choose a benchmark task." },
+              { y: 1, description: "Execute the selected task." },
+              { y: 2, description: "Inspect logs and JSON output." },
+              { y: 3, description: "Validate measured results." }
+            ]
           }
         ]
       });
