@@ -26,7 +26,6 @@ TASK_DESCRIPTORS = {
         "grader_file": "graders/easy_grader.py",
         "yaml_file": "tasks/easy.yaml",
         "hover_color": "#10b981",
-        "count": 24,
     },
     "medium": {
         "severity": "SEV-2",
@@ -37,7 +36,6 @@ TASK_DESCRIPTORS = {
         "grader_file": "graders/medium_grader.py",
         "yaml_file": "tasks/medium.yaml",
         "hover_color": "#3b82f6",
-        "count": 18,
     },
     "hard": {
         "severity": "SEV-1",
@@ -48,7 +46,6 @@ TASK_DESCRIPTORS = {
         "grader_file": "graders/hard_grader.py",
         "yaml_file": "tasks/hard.yaml",
         "hover_color": "#f59e0b",
-        "count": 12,
     },
     "expert": {
         "severity": "SEV-1+",
@@ -59,7 +56,6 @@ TASK_DESCRIPTORS = {
         "grader_file": "graders/expert_grader.py",
         "yaml_file": "tasks/expert.yaml",
         "hover_color": "#ef4444",
-        "count": 7,
     },
 }
 
@@ -973,32 +969,32 @@ def landing_page() -> str:
       <section class="panel command-hero">
         <div class="hero-grid">
           <div>
-            <div class="eyebrow">Operational command surface</div>
-            <h1 class="hero-title">Sev1Bench validation and benchmark operations surface</h1>
+            <div class="eyebrow">Benchmark execution surface</div>
+            <h1 class="hero-title">Sev1Bench benchmark overview and execution console</h1>
             <div class="hero-copy">
-              Bench-grade incident-response control center tuned for high-fidelity validation review. This interface
-              combines benchmark posture, task navigation, live telemetry, execution doctrine, and score visibility
-              into one engineering-grade workspace for operators and judges.
+              This interface presents the benchmark structure, task navigation, execution controls, and run output for
+              Sev1Bench. It is designed to help reviewers inspect available tasks, launch benchmark runs, and read
+              runtime traces without relying on unverified product-style metrics.
             </div>
           </div>
           <div class="hero-side">
             <div class="hero-badges">
-              <div class="hero-badge"><span class="hero-dot"></span>Runtime Healthy</div>
-              <div class="hero-badge">Task Count&nbsp; 04</div>
-              <div class="hero-badge">Stack Details&nbsp; FastAPI + OpenEnv</div>
+              <div class="hero-badge"><span class="hero-dot"></span>Runtime available</div>
+              <div class="hero-badge">Task count&nbsp; 04</div>
+              <div class="hero-badge">Stack&nbsp; FastAPI + OpenEnv</div>
             </div>
             <div class="hero-metrics-mini">
               <div class="card mini-card">
                 <div class="subtle-label">Validation posture</div>
-                <div class="mini-value">Accepted submission build</div>
+                <div class="mini-value">Repository-backed benchmark UI</div>
               </div>
               <div class="card mini-card">
                 <div class="subtle-label">Execution mode</div>
-                <div class="mini-value">Deterministic + LLM hybrid</div>
+                <div class="mini-value">Task run and trace inspection</div>
               </div>
               <div class="card mini-card">
                 <div class="subtle-label">Review surface</div>
-                <div class="mini-value">Logs, scores, traces, JSON</div>
+                <div class="mini-value">Logs, JSON, task metadata</div>
               </div>
             </div>
           </div>
@@ -1044,70 +1040,70 @@ def landing_page() -> str:
           <section class="panel section-panel metrics-shell">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Live metrics</div>
-                <div class="section-title">Premium benchmark telemetry and recovery trend surface</div>
+                <div class="section-kicker">Benchmark facts</div>
+                <div class="section-title">Verified repository values and execution notes</div>
               </div>
-              <div class="tiny-pill">Updated daily</div>
+              <div class="tiny-pill">Static UI content</div>
             </div>
 
             <div class="live-metrics-grid">
               <div class="kpi">
                 <div class="kpi-top">
-                  <div class="metric-label">Success Rate</div>
-                  <div class="kpi-icon">↗</div>
+                  <div class="metric-label">Active tasks</div>
+                  <div class="kpi-icon">#</div>
                 </div>
-                <div class="kpi-value tone-success"><strong>84.2%</strong></div>
-                <div class="kpi-delta positive">▲ 2.4%</div>
-                <div class="body-copy">Benchmark-facing presentation metric for declared benchmark tiers.</div>
+                <div class="kpi-value tone-success"><strong>4</strong></div>
+                <div class="kpi-delta positive">verified</div>
+                <div class="body-copy">Based on the active task files currently present in <span class="code-tag">tasks/</span>.</div>
               </div>
               <div class="kpi">
                 <div class="kpi-top">
-                  <div class="metric-label">Avg MTTR</div>
-                  <div class="kpi-icon">⏱</div>
-                </div>
-                <div class="kpi-value tone-warn"><strong>4m 12s</strong></div>
-                <div class="kpi-delta warn">14s</div>
-                <div class="body-copy">Presentation metric showing recovery-time posture in the operator surface.</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-top">
-                  <div class="metric-label">Accuracy</div>
+                  <div class="metric-label">Reward range</div>
                   <div class="kpi-icon">◎</div>
                 </div>
-                <div class="kpi-value tone-success"><strong>92.5%</strong></div>
-                <div class="kpi-delta positive">▲ 1.1%</div>
-                <div class="body-copy">Presentation metric for remediation precision and target correctness.</div>
+                <div class="kpi-value tone-warn"><strong>0.0–1.0</strong></div>
+                <div class="kpi-delta warn">verified</div>
+                <div class="body-copy">Matches the reward range declared in the task files and overview endpoint.</div>
+              </div>
+              <div class="kpi">
+                <div class="kpi-top">
+                  <div class="metric-label">Run output</div>
+                  <div class="kpi-icon">↗</div>
+                </div>
+                <div class="kpi-value tone-success"><strong>On demand</strong></div>
+                <div class="kpi-delta positive">live</div>
+                <div class="body-copy">Measured success, steps, and score appear only after executing a benchmark run.</div>
               </div>
             </div>
 
             <div class="metric-row">
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Loss</div>
-                  <div class="tiny-pill">display</div>
+                  <div class="metric-label">Task files</div>
+                  <div class="tiny-pill">verified</div>
                 </div>
-                <div class="metric-value tone-danger"><strong>3.12</strong></div>
+                <div class="metric-value tone-danger"><strong>4</strong></div>
               </div>
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Current local mean score</div>
-                  <div class="tiny-pill">measured</div>
+                  <div class="metric-label">Supported actions</div>
+                  <div class="tiny-pill">verified</div>
                 </div>
-                <div class="metric-value score-strong">0.997</div>
+                <div class="metric-value score-strong">5</div>
               </div>
               <div class="metric-card">
                 <div class="metric-head">
-                  <div class="metric-label">Measured task pass count</div>
-                  <div class="tiny-pill">local</div>
+                  <div class="metric-label">App entrypoint</div>
+                  <div class="tiny-pill">verified</div>
                 </div>
-                <div class="metric-value">4 / 4</div>
+                <div class="metric-value" style="font-size: 16px;">server.app:app</div>
               </div>
               <div class="metric-card">
                 <div class="metric-head">
                   <div class="metric-label">UI note</div>
                   <div class="tiny-pill">important</div>
                 </div>
-                <div class="metric-value" style="font-size: 16px;">Hero KPIs are presentation values</div>
+                <div class="metric-value" style="font-size: 16px;">Use run results for measured values</div>
               </div>
             </div>
 
@@ -1202,7 +1198,7 @@ def landing_page() -> str:
                   <strong>Easy</strong>
                   <span class="task-summary">Rollback-oriented checkout regression</span>
                 </span>
-                <span class="task-count">24 runs</span>
+                <span class="task-count">verified task</span>
               </button>
               <button class="task-button" data-task="medium" data-color="blue" type="button">
                 <span class="task-index">02</span>
@@ -1210,7 +1206,7 @@ def landing_page() -> str:
                   <strong>Medium</strong>
                   <span class="task-summary">Signer-process failure masked by auth noise</span>
                 </span>
-                <span class="task-count">18 runs</span>
+                <span class="task-count">verified task</span>
               </button>
               <button class="task-button" data-task="hard" data-color="amber" type="button">
                 <span class="task-index">03</span>
@@ -1218,7 +1214,7 @@ def landing_page() -> str:
                   <strong>Hard</strong>
                   <span class="task-summary">Replication lag driving payment write collapse</span>
                 </span>
-                <span class="task-count">12 runs</span>
+                <span class="task-count">verified task</span>
               </button>
               <button class="task-button" data-task="expert" data-color="red" type="button">
                 <span class="task-index">04</span>
@@ -1226,7 +1222,7 @@ def landing_page() -> str:
                   <strong>Expert</strong>
                   <span class="task-summary">Broker coordination outage under backlog pressure</span>
                 </span>
-                <span class="task-count">07 runs</span>
+                <span class="task-count">verified task</span>
               </button>
             </div>
 
@@ -1277,31 +1273,31 @@ def landing_page() -> str:
           <section class="panel section-panel">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Round 1 improvement brief</div>
-                <div class="section-title small">Reality check and next steps</div>
+                <div class="section-kicker">Reviewer notes</div>
+                <div class="section-title small">What this UI is intended to show</div>
               </div>
             </div>
 
             <div class="doctrine-list">
               <div class="doctrine-card">
-                <div class="doctrine-step">Priority 01</div>
-                <div><strong>Optimize for hidden test robustness</strong></div>
-                <div class="doctrine-copy">Make task handling less brittle, keep fallbacks safe when metadata is partial, and avoid depending on narrow visible-task assumptions.</div>
+                <div class="doctrine-step">Note 01</div>
+                <div><strong>Task cards describe repository-defined scenarios</strong></div>
+                <div class="doctrine-copy">Each task card maps to a task file and grader pair that exists in this repository.</div>
               </div>
               <div class="doctrine-card">
-                <div class="doctrine-step">Priority 02</div>
-                <div><strong>Reduce visible scoring leaks</strong></div>
-                <div class="doctrine-copy"><span class="code-tag">easy</span> still shows a small efficiency leak and <span class="code-tag">expert</span> still shows a small impact-containment leak; tighten sequencing and earlier mitigation.</div>
+                <div class="doctrine-step">Note 02</div>
+                <div><strong>Measured values come from executed runs</strong></div>
+                <div class="doctrine-copy">Use the run panel to collect success, steps, score, logs, and raw JSON for the selected task.</div>
               </div>
               <div class="doctrine-card">
-                <div class="doctrine-step">Priority 03</div>
-                <div><strong>Favor deterministic reliability over pure LLM dependence</strong></div>
-                <div class="doctrine-copy">Hybrid or deterministic flows are often stronger in CI because they reduce failure modes and improve reproducibility under hidden evaluation.</div>
+                <div class="doctrine-step">Note 03</div>
+                <div><strong>Static labels are descriptive, not benchmark claims</strong></div>
+                <div class="doctrine-copy">This page avoids fixed success-rate or MTTR claims unless they are produced by a real benchmark execution.</div>
               </div>
               <div class="doctrine-card">
-                <div class="doctrine-step">Priority 04</div>
-                <div><strong>Tighten presentation and judge confidence</strong></div>
-                <div class="doctrine-copy">Polish <span class="code-tag">README.md</span>, remove dead code or confusing artifacts, and keep logs and narrative crisp enough for reviewers to trust immediately.</div>
+                <div class="doctrine-step">Note 04</div>
+                <div><strong>Review raw outputs when validating behavior</strong></div>
+                <div class="doctrine-copy">The JSON response and terminal trace are the authoritative UI surfaces for task execution results.</div>
               </div>
             </div>
           </section>
