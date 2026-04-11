@@ -19,10 +19,11 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME")
-TASK_NAME = os.getenv("TASK_ID", "easy")
+TASK_IDS_ENV = os.getenv("TASK_ID", "easy,medium,hard,expert")
 BENCHMARK = "sev1bench"
 DEFAULT_MODEL_NAME = "openai/gpt-4o-mini"
 SUPPORTED_TASK_IDS = ("easy", "medium", "hard", "expert")
+TARGET_TASKS = [task_id.strip() for task_id in TASK_IDS_ENV.split(",") if task_id.strip()]
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -353,39 +354,49 @@ def run_task(task_id: str, client: OpenAI, model_name: str) -> tuple[bool, int, 
 
 def main() -> int:
     api_base_url, model_name = resolve_runtime_config()
+    target_tasks = [task_id for task_id in TARGET_TASKS if task_id in SUPPORTED_TASK_IDS]
+    if not target_tasks:
+        raise ValueError("No valid task IDs configured in TASK_ID")
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=model_name)
-    log_runtime_config(
-        task=TASK_NAME,
-        model=model_name,
-        api_base_url=api_base_url,
-        hf_token_present=bool(HF_TOKEN and HF_TOKEN.strip()),
-        using_proxy_env=True,
-    )
-
-    success = False
-    steps = 0
-    score = 0.0
-    rewards: list[float] = []
-    return_code = 0
+    overall_return_code = 0
 
     try:
         client = OpenAI(
             base_url=api_base_url,
             api_key=HF_TOKEN,
         )
-        success, steps, score, rewards = run_task(
-            task_id=TASK_NAME,
-            client=client,
-            model_name=model_name,
-        )
     except Exception:
         print(traceback.format_exc(limit=3), file=sys.stderr, flush=True)
-        return_code = 1
-    finally:
-        log_end(success=success, steps=steps, score=score, rewards=rewards)
+        return 1
 
-    return return_code
+    for current_task in target_tasks:
+        log_start(task=current_task, env=BENCHMARK, model=model_name)
+        log_runtime_config(
+            task=current_task,
+            model=model_name,
+            api_base_url=api_base_url,
+            hf_token_present=bool(HF_TOKEN and HF_TOKEN.strip()),
+            using_proxy_env=True,
+        )
+
+        success = False
+        steps = 0
+        score = 0.0
+        rewards: list[float] = []
+
+        try:
+            success, steps, score, rewards = run_task(
+                task_id=current_task,
+                client=client,
+                model_name=model_name,
+            )
+        except Exception:
+            print(traceback.format_exc(limit=3), file=sys.stderr, flush=True)
+            overall_return_code = 1
+        finally:
+            log_end(success=success, steps=steps, score=score, rewards=rewards)
+
+    return overall_return_code
 
 
 if __name__ == "__main__":
